@@ -16,3 +16,12 @@ REST_FRAMEWORK['DEFAULT_THROTTLING_RATES'] = {
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+
+# Optional SQLite fallback for lightweight CI runners
+if os.environ.get('USE_SQLITE', 'false').lower() in ('true', '1', 'yes'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'test_db.sqlite3',
+        }
+    }

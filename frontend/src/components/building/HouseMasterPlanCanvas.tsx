@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Project, Room, UnderfloorCircuitItem, Manifold } from '../../types';
+import { Project, Room, UnderfloorCircuitItem } from '../../types';
 import { api } from '../../api/client';
 import {
   ZoomIn,
@@ -8,16 +8,10 @@ import {
   Move,
   Flame,
   Layers,
-  Thermometer,
   ExternalLink,
   Save,
   Check,
-  Grid,
   Sparkles,
-  RotateCcw,
-  Sliders,
-  Eye,
-  EyeOff,
   Lock,
   Unlock,
   AlertTriangle,
@@ -25,9 +19,7 @@ import {
   Box,
   Compass,
   Info,
-  ChevronRight,
   Activity,
-  Wrench,
   X
 } from 'lucide-react';
 
@@ -213,7 +205,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
 
   // Building bounds
   const buildingBounds = useMemo(() => {
-    let minX = 0, minY = 0, maxX = 12, maxY = 8;
+    let maxX = 12, maxY = 8;
     roomsToDisplay.forEach((r) => {
       const pos = roomPositions[r.id] || { x: 0, y: 0 };
       const right = pos.x + r.width;

@@ -1,8 +1,17 @@
 # SantexPro — Isitish Tizimlarini Loyihalash va Hisoblash Platformasi
 
+[![SantexPro CI Pipeline](https://github.com/satorovramazonbek/santexpro/actions/workflows/ci.yml/badge.svg)](https://github.com/satorovramazonbek/santexpro/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python: 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
+[![Django: 6.1](https://img.shields.io/badge/Django-6.1-green.svg)](https://www.djangoproject.com/)
+[![React: 19](https://img.shields.io/badge/React-19-cyan.svg)](https://react.dev/)
+[![TypeScript: 6.0](https://img.shields.io/badge/TypeScript-6.0-blue.svg)](https://www.typescriptlang.org/)
+[![PostgreSQL: 17](https://img.shields.io/badge/PostgreSQL-17-blue.svg)](https://www.postgresql.org/)
+
 **SantexPro** — santexniklar, isitish tizimlari montajchilari va O‘zbekiston iqlim sharoitida ishlovchi muhandislar uchun mo‘ljallangan to‘liq funksional veb-platforma. Foydalanuvchi interfeysi to‘liq **O‘zbek lotin** alifbosida tayyorlangan bo‘lib, xalqaro va milliy qurilish me’yorlari (EN 12831, EN 442, EN 1264, KMK 2.01.04-97) asosida ishlaydi.
 
 ---
+
 
 ## 1. Asosiy imkoniyatlar
 
@@ -209,3 +218,26 @@ SantexPro/
 - **Ko‘p burchakli (noto‘g‘ri shakldagi) xonalar:** Hozirgi versiyada xonalar to‘rtburchak shaklda qabul qilinadi. Kelgusida ixtiyoriy poligon devor koordinatalarini kiritish imkoniyati qo‘shiladi.
 - **DXF / DWG eksport:** Hozirgi PDF formatiga qo‘shimcha ravishda montajchilar uchun AutoCAD / DXF formatida 2D chizmani eksport qilish.
 - **Konditsionerlash va sovutish quvvati hisobi:** Yozgi mavsum uchun issiqlik oqimi va fankoyl/konditsioner tanlash moduli.
+
+---
+
+## 8. CI/CD Konfiguratsiyasi (GitHub Actions)
+
+Loyiha uchun to‘liq avtomatlashtirilgan CI/CD konveyeri sozlangan:
+
+### 1. Doimiy Integratsiya (`.github/workflows/ci.yml`)
+Har bir `push` yoki `pull_request` asosiy `main` tarmoqqa yuborilganda quyidagi tekshiruvlar avtomatik ishga tushadi:
+- **Backend Tests & Quality:**
+  - Python 3.12 muhitida PostgreSQL 17 konteyneri bilan ulanish.
+  - Django tizim tekshiruvi (`python manage.py check`).
+  - 60 ta avtomatlashtirilgan testlar to‘plami (`python manage.py test`): issiq pol CAD marshrutlash, kollektor balansi, issiqlik yo‘qotilishi, gidravlika, autentifikatsiya va PDF hisobot generatsiyasi.
+- **Frontend Quality & Build:**
+  - Node.js 22 muhitida paketlarni toza o‘rnatish (`npm ci`).
+  - Statik kod tekshiruvi (`npm run lint`).
+  - TypeScript turlari va Vite ishlab chiqarish bundle kompilyatsiyasi (`npm run build`).
+- **Docker Verification:**
+  - `docker compose config` sintaksisini tekshirish.
+  - Backend va Frontend Dockerfile imijlarini yig‘ish sinovi.
+
+### 2. Doimiy Joylashtirish (`.github/workflows/cd.yml`)
+`main` tarmog‘iga yangi versiya qo‘shilganda, GitHub Secrets (`SERVER_HOST`, `SERVER_USER`, `SSH_PRIVATE_KEY`) orqali ishlab chiqarish serveriga (VPS / Cloud) avtomatik `git pull`, migratsiyalar qo‘llanishi va konteynerlar qayta yuklanishi ta’minlanadi.
