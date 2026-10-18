@@ -23,6 +23,7 @@ interface RoomEditorPageProps {
 
 export const RoomEditorPage: React.FC<RoomEditorPageProps> = ({ roomId, onBack }) => {
   const [room, setRoom] = useState<Room | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [catalogRadiators, setCatalogRadiators] = useState<RadiatorCatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +84,15 @@ export const RoomEditorPage: React.FC<RoomEditorPageProps> = ({ roomId, onBack }
         desired_temp: roomData.desired_temp,
         heating_preference: roomData.heating_preference,
       });
+
+      if (roomData.project) {
+        try {
+          const projData = await api.getProject(roomData.project);
+          setProject(projData);
+        } catch (pErr) {
+          console.warn("Loyiha ma'lumotlarini yuklashda xatolik:", pErr);
+        }
+      }
     } catch (err: any) {
       setError(err.message || "Xona ma'lumotlarini yuklashda xatolik");
     } finally {
@@ -232,7 +242,8 @@ export const RoomEditorPage: React.FC<RoomEditorPageProps> = ({ roomId, onBack }
         <div className="lg:col-span-7 flex flex-col gap-4">
           <RoomEditorCanvas
             room={room}
-            manifold={room.manifolds?.[0] || null}
+            project={project}
+            manifold={project?.manifolds?.[0] || room.manifolds?.[0] || null}
             onCalculationUpdated={loadData}
           />
 

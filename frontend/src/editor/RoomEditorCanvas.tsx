@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { Room, Manifold } from '../types';
+import { Room, Manifold, Project } from '../types';
 import { 
   ZoomIn, 
   ZoomOut, 
@@ -20,7 +20,11 @@ import {
   Minimize2,
   MousePointer,
   Hand,
-  Focus
+  Focus,
+  Building2,
+  ExternalLink,
+  GitBranch,
+  ArrowUpRight
 } from 'lucide-react';
 import { 
   generateRoomCadCircuits, 
@@ -33,6 +37,7 @@ import { api } from '../api/client';
 
 interface RoomEditorCanvasProps {
   room: Room;
+  project?: Project | null;
   manifold?: Manifold | null;
   onUpdateRadiatorPosition?: (radiatorId: number, x: number, y: number) => void;
   onUpdateManifoldPosition?: (x: number, y: number) => void;
@@ -44,6 +49,7 @@ interface RoomEditorCanvasProps {
 
 export const RoomEditorCanvas: React.FC<RoomEditorCanvasProps> = ({
   room,
+  project,
   manifold,
   onUpdateRadiatorPosition,
   onUpdateManifoldPosition,
@@ -67,6 +73,7 @@ export const RoomEditorCanvas: React.FC<RoomEditorCanvasProps> = ({
   const [showDimensions, setShowDimensions] = useState(true);
   const [showCircuitTable, setShowCircuitTable] = useState(false);
   const [showPirogModal, setShowPirogModal] = useState(false);
+  const [showAdjacentRooms, setShowAdjacentRooms] = useState(true);
   const [selectedCircuit, setSelectedCircuit] = useState<number | null>(null);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -276,6 +283,116 @@ export const RoomEditorCanvas: React.FC<RoomEditorCanvasProps> = ({
     );
   }, [room.length, room.width, numCircuits, spacingMm, pattern, manifoldPos, baseOriginX, baseOriginY, basePxPerMeter]);
 
+  // Layout coordinates of all rooms in the project
+  const roomPositions = useMemo(() => {
+    if (!project?.rooms) return {};
+    const pos: Record<number, { x: number; y: number }> = {};
+    let curX = 0;
+    let curY = 0;
+    let maxHeight = 0;
+    const rowLimit = 16.0;
+
+    project.rooms.forEach((r) => {
+      if (r.position_x !== undefined && r.position_y !== undefined && (r.position_x !== 0 || r.position_y !== 0)) {
+        pos[r.id] = { x: r.position_x, y: r.position_y };
+      } else {
+        if (curX + r.width > rowLimit && curX > 0) {
+          curX = 0;
+          curY += maxHeight + 0.6;
+          maxHeight = 0;
+        }
+        pos[r.id] = { x: Number(curX.toFixed(2)), y: Number(curY.toFixed(2)) };
+        curX += r.width + 0.6;
+        if (r.length > maxHeight) maxHeight = r.length;
+      }
+    });
+    return pos;
+  }, [project?.rooms]);
+
+  // Current active room position in project
+  const myPos = useMemo(() => {
+    return roomPositions[room.id] || { x: room.position_x ?? 0, y: room.position_y ?? 0 };
+  }, [roomPositions, room.id, room.position_x, room.position_y]);
+
+  // Other rooms on the same floor
+  const adjacentRooms = useMemo(() => {
+    if (!project?.rooms) return [];
+    const floor = room.floor_number || 1;
+    return project.rooms.filter((r) => r.id !== room.id && (r.floor_number || 1) === floor);
+  }, [project?.rooms, room.floor_number, room.id]);
+
+  // Central manifold (ШРВ)
+  const centralManifold = useMemo(() => {
+    if (manifold) return manifold;
+    if (project?.manifolds && project.manifolds.length > 0) return project.manifolds[0];
+    return null;
+  }, [manifold, project?.manifolds]);
+
+  // Primary door or entry point into the active room
+  const primaryDoor = useMemo(() => {
+    return room.doors && room.doors.length > 0 ? room.doors[0] : null;
+  }, [room.doors]);
+
+  const doorEntryM = useMemo(() => {
+    if (primaryDoor) {
+      return {
+        x: Math.min(room.length - 0.4, Math.max(0.4, primaryDoor.position_along_wall + primaryDoor.width / 2)),
+        y: room.width,
+      };
+    }
+    return {
+      x: room.length * 0.35,
+      y: room.width,
+    };
+  }, [primaryDoor, room.length, room.width]);
+
+  // Central manifold position relative to current room (corridor position)
+  const centralManifoldRelPos = useMemo(() => {
+    if (!centralManifold) {
+      return { x: Math.max(-2.5, doorEntryM.x - 2.8), y: room.width + 1.2 };
+    }
+    const cmX = centralManifold.position_x ?? (myPos.x - 2.0);
+    const cmY = centralManifold.position_y ?? (myPos.y + room.width + 1.2);
+    const relX = cmX - myPos.x;
+    const relY = cmY - myPos.y;
+    if (Math.abs(relX) > 25 || Math.abs(relY) > 25) {
+      return { x: Math.max(-2.5, doorEntryM.x - 2.8), y: room.width + 1.2 };
+    }
+    return { x: relX, y: relY };
+  }, [centralManifold, myPos.x, myPos.y, room.width, doorEntryM.x]);
+
+  // Directional wall boundaries
+  const wallBoundaries = useMemo(() => {
+    let north = 'Tashqi devor (Fasad)';
+    let south = 'Yo‘lak / Dahliz (Magistral trassa)';
+    let west = 'Tashqi devor';
+    let east = 'Tashqi devor';
+
+    if (project?.rooms) {
+      project.rooms.forEach((r) => {
+        if (r.id === room.id || (r.floor_number || 1) !== (room.floor_number || 1)) return;
+        const pos = roomPositions[r.id] || { x: 0, y: 0 };
+        const dX = pos.x - myPos.x;
+        const dY = pos.y - myPos.y;
+
+        if (dY < 0 && Math.abs(dY + r.width) < 1.0 && dX < room.length && dX + r.length > 0) {
+          north = `${r.name}`;
+        }
+        if (dY > 0 && Math.abs(dY - room.width) < 1.0 && dX < room.length && dX + r.length > 0) {
+          south = `${r.name}`;
+        }
+        if (dX < 0 && Math.abs(dX + r.length) < 1.0 && dY < room.width && dY + r.width > 0) {
+          west = `${r.name}`;
+        }
+        if (dX > 0 && Math.abs(dX - room.length) < 1.0 && dY < room.width && dY + r.width > 0) {
+          east = `${r.name}`;
+        }
+      });
+    }
+
+    return { north, south, west, east };
+  }, [project?.rooms, room.id, room.floor_number, room.length, room.width, roomPositions, myPos]);
+
   // Sanitary fixtures
   const sanitaryFixtures: SanitaryFixture[] = useMemo(() => {
     return getStandardSanitaryFixtures(room.name, room.length, room.width);
@@ -407,6 +524,22 @@ export const RoomEditorCanvas: React.FC<RoomEditorCanvasProps> = ({
             {showPipes ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
             Trassa (T1/T2)
           </button>
+
+          {adjacentRooms.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowAdjacentRooms(!showAdjacentRooms)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                showAdjacentRooms
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+              }`}
+              title="Qo‘shni xonalar va magistral ulanishlar (Uponor CAD)"
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              Qo‘shni xonalar ({adjacentRooms.length})
+            </button>
+          )}
 
           {sanitaryFixtures.length > 0 && (
             <button
@@ -583,15 +716,360 @@ export const RoomEditorCanvas: React.FC<RoomEditorCanvasProps> = ({
                   </g>
                 )}
 
+              {/* 2.5 Adjacent Rooms & Corridor Pipeline Network Layer (Uponor CAD Connected Layout) */}
+              {showAdjacentRooms && adjacentRooms.length > 0 && (
+                <g className="adjacent-rooms-and-corridor-layer">
+                  {/* Corridor / Circulation Walkway Zone */}
+                  <rect
+                    x={toPxX(-3.5)}
+                    y={toPxY(room.width)}
+                    width={(room.length + 7) * pxPerMeter}
+                    height={1.8 * pxPerMeter}
+                    fill="#F8FAFC"
+                    stroke="#E2E8F0"
+                    strokeWidth="1"
+                    strokeDasharray="4,4"
+                  />
+                  <text
+                    x={toPxX(room.length / 2)}
+                    y={toPxY(room.width + 1.0)}
+                    textAnchor="middle"
+                    className="text-[10px] font-bold fill-slate-400 font-sans uppercase tracking-widest pointer-events-none select-none"
+                  >
+                    Dahliz / Umumiy Yo‘lak (Magistral yo‘li)
+                  </text>
+
+                  {/* Surrounding / Adjacent Rooms */}
+                  {adjacentRooms.map((adj) => {
+                    const aPos = roomPositions[adj.id] || { x: 0, y: 0 };
+                    const dXM = aPos.x - myPos.x;
+                    const dYM = aPos.y - myPos.y;
+                    const aPxX = toPxX(dXM);
+                    const aPxY = toPxY(dYM);
+                    const aPxW = adj.length * pxPerMeter;
+                    const aPxH = adj.width * pxPerMeter;
+                    const cX = aPxX + aPxW / 2;
+                    const cY = aPxY + aPxH / 2;
+
+                    return (
+                      <g key={adj.id} className="adjacent-room-group">
+                        {/* Floor Slab with soft Uponor CAD blueprint style */}
+                        <rect
+                          x={aPxX}
+                          y={aPxY}
+                          width={aPxW}
+                          height={aPxH}
+                          fill="#FBFDFF"
+                          stroke="#94A3B8"
+                          strokeWidth="1.2"
+                          rx="2"
+                        />
+
+                        {/* Double Outer Wall line */}
+                        <rect
+                          x={aPxX - 3}
+                          y={aPxY - 3}
+                          width={aPxW + 6}
+                          height={aPxH + 6}
+                          fill="none"
+                          stroke="#CBD5E1"
+                          strokeWidth="0.8"
+                          strokeDasharray="2,2"
+                          rx="3"
+                        />
+
+                        {/* Circuit hint: indicative spiral loops inside adjacent room */}
+                        {aPxW > 40 && aPxH > 40 && (
+                          <g opacity="0.32" pointerEvents="none">
+                            <rect
+                              x={aPxX + 10}
+                              y={aPxY + 10}
+                              width={aPxW - 20}
+                              height={aPxH - 20}
+                              fill="none"
+                              stroke="#EF4444"
+                              strokeWidth="0.9"
+                              strokeDasharray="4,2"
+                              rx="2"
+                            />
+                            <rect
+                              x={aPxX + 16}
+                              y={aPxY + 16}
+                              width={aPxW - 32}
+                              height={aPxH - 32}
+                              fill="none"
+                              stroke="#2563EB"
+                              strokeWidth="0.9"
+                              strokeDasharray="4,2"
+                              rx="2"
+                            />
+                          </g>
+                        )}
+
+                        {/* Uponor Circular Room Marker Tag */}
+                        <circle
+                          cx={cX}
+                          cy={cY - 12}
+                          r="13"
+                          fill="#FFFFFF"
+                          stroke="#64748B"
+                          strokeWidth="1.2"
+                          filter="drop-shadow(0 1px 2px rgba(0,0,0,0.06))"
+                        />
+                        <text
+                          x={cX}
+                          y={cY - 8}
+                          textAnchor="middle"
+                          className="text-[11px] font-bold fill-slate-800 font-mono"
+                        >
+                          {adj.name.match(/\d+/)?.[0] ?? adj.id}
+                        </text>
+
+                        {/* Room Name & Area */}
+                        <text
+                          x={cX}
+                          y={cY + 7}
+                          textAnchor="middle"
+                          className="text-[10px] font-bold fill-slate-700 font-sans"
+                        >
+                          {adj.name}
+                        </text>
+                        <text
+                          x={cX}
+                          y={cY + 19}
+                          textAnchor="middle"
+                          className="text-[9px] font-mono fill-slate-500 font-medium"
+                        >
+                          {adj.length}×{adj.width}m ({adj.area} m²)
+                        </text>
+
+                        {/* Switch to this room interactive button link */}
+                        <a
+                          href={`/projects/${room.project}/rooms/${adj.id}`}
+                          className="cursor-pointer group"
+                          title={`${adj.name} xonasini tahrirlashga o‘tish`}
+                        >
+                          <rect
+                            x={cX - 38}
+                            y={cY + 25}
+                            width="76"
+                            height="16"
+                            rx="4"
+                            fill="#EFF6FF"
+                            stroke="#93C5FD"
+                            strokeWidth="0.9"
+                            className="group-hover:fill-blue-100 group-hover:stroke-blue-400 transition-colors"
+                          />
+                          <text
+                            x={cX}
+                            y={cY + 36}
+                            textAnchor="middle"
+                            className="text-[8.5px] font-bold fill-blue-700 font-mono tracking-tight"
+                          >
+                            Xonaga o‘tish ↗
+                          </text>
+                        </a>
+                      </g>
+                    );
+                  })}
+
+                  {/* Central Manifold Cabinet in Corridor & Connecting Feeder Pipelines */}
+                  {(() => {
+                    const cmX = toPxX(centralManifoldRelPos.x);
+                    const cmY = toPxY(centralManifoldRelPos.y);
+                    const entryX = toPxX(doorEntryM.x);
+                    const entryY = toPxY(doorEntryM.y);
+
+                    return (
+                      <g className="corridor-trunk-network">
+                        {/* Feeder Pipeline: Supply T11 (Red #EF4444) from Manifold to Room Door */}
+                        <path
+                          d={`M ${cmX} ${cmY - 4} L ${entryX - 4} ${cmY - 4} L ${entryX - 4} ${entryY}`}
+                          fill="none"
+                          stroke="#EF4444"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        {/* Flow Arrow into room */}
+                        <polygon
+                          points={`${entryX - 4},${entryY - 14} ${entryX - 7},${entryY - 8} ${entryX - 1},${entryY - 8}`}
+                          fill="#EF4444"
+                        />
+
+                        {/* Feeder Pipeline: Return T12 (Blue #2563EB) from Room Door to Manifold */}
+                        <path
+                          d={`M ${entryX + 4} ${entryY} L ${entryX + 4} ${cmY + 4} L ${cmX} ${cmY + 4}`}
+                          fill="none"
+                          stroke="#2563EB"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        {/* Flow Arrow back to manifold */}
+                        <polygon
+                          points={`${cmX + 22},${cmY + 4} ${cmX + 28},${cmY + 1} ${cmX + 28},${cmY + 7}`}
+                          fill="#2563EB"
+                        />
+
+                        {/* Corrugated Conduit Sleeve (PePEX Gofro-himoya g'ilofi) across doorway threshold */}
+                        <rect
+                          x={entryX - 14}
+                          y={entryY - 5}
+                          width="28"
+                          height="10"
+                          fill="url(#corrugatedSleeve)"
+                          stroke="#334155"
+                          strokeWidth="1"
+                          rx="2"
+                        />
+                        <text
+                          x={entryX}
+                          y={entryY + 16}
+                          textAnchor="middle"
+                          className="text-[8px] font-bold fill-slate-800 font-mono bg-white"
+                        >
+                          T11/T12 Gofra (Ø20)
+                        </text>
+
+                        {/* Corridor Trunk Pipeline Specification Tag */}
+                        <g transform={`translate(${(cmX + entryX) / 2}, ${cmY - 14})`}>
+                          <rect
+                            x="-70"
+                            y="-8"
+                            width="140"
+                            height="16"
+                            rx="3"
+                            fill="#FFFFFF"
+                            stroke="#0284C7"
+                            strokeWidth="1"
+                            filter="drop-shadow(0 1px 2px rgba(0,0,0,0.06))"
+                          />
+                          <text
+                            x="0"
+                            y="3.5"
+                            textAnchor="middle"
+                            className="text-[8.5px] font-bold fill-sky-950 font-mono tracking-tight"
+                          >
+                            Magistral: Uponor pePEX Ø20×2.8
+                          </text>
+                        </g>
+
+                        {/* Branches going towards adjacent rooms from the same corridor */}
+                        {adjacentRooms.slice(0, 2).map((adj, aIdx) => {
+                          const aPos = roomPositions[adj.id] || { x: 0, y: 0 };
+                          const dXM = aPos.x - myPos.x;
+                          const dYM = aPos.y - myPos.y;
+                          const targetX = toPxX(dXM + adj.length / 2);
+                          const targetY = toPxY(dYM + adj.width);
+                          const branchOff = (aIdx + 1) * 8;
+
+                          return (
+                            <g key={`branch-${adj.id}`} opacity="0.65">
+                              <path
+                                d={`M ${cmX} ${cmY - branchOff} L ${targetX} ${cmY - branchOff} L ${targetX} ${targetY}`}
+                                fill="none"
+                                stroke="#EF4444"
+                                strokeWidth="1.5"
+                                strokeDasharray="4,2"
+                              />
+                              <path
+                                d={`M ${cmX} ${cmY + branchOff} L ${targetX + 5} ${cmY + branchOff} L ${targetX + 5} ${targetY}`}
+                                fill="none"
+                                stroke="#2563EB"
+                                strokeWidth="1.5"
+                                strokeDasharray="4,2"
+                              />
+                            </g>
+                          );
+                        })}
+
+                        {/* Central Manifold Wall Cabinet (ШРВ) */}
+                        <g transform={`translate(${cmX}, ${cmY})`}>
+                          <rect
+                            x="-26"
+                            y="-16"
+                            width="52"
+                            height="32"
+                            rx="3"
+                            fill="#FFFFFF"
+                            stroke="#0F172A"
+                            strokeWidth="1.5"
+                            filter="drop-shadow(0 2px 5px rgba(0,0,0,0.12))"
+                          />
+                          <line x1="-20" y1="-5" x2="20" y2="-5" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round" />
+                          <line x1="-20" y1="5" x2="20" y2="5" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" />
+                          {/* Rotameter pins */}
+                          {[-12, -4, 4, 12].map((off) => (
+                            <circle key={off} cx={off} cy="-9" r="1.5" fill="#38BDF8" stroke="#0284C7" strokeWidth="0.5" />
+                          ))}
+                          {/* Label */}
+                          <g transform="translate(0, 26)">
+                            <rect
+                              x="-45"
+                              y="-7"
+                              width="90"
+                              height="14"
+                              rx="3"
+                              fill="#0F172A"
+                            />
+                            <text
+                              x="0"
+                              y="3"
+                              textAnchor="middle"
+                              className="text-[8px] font-bold fill-white font-mono"
+                            >
+                              {centralManifold?.name || "Markaziy ШРВ"}
+                            </text>
+                          </g>
+                        </g>
+                      </g>
+                    );
+                  })()}
+
+                  {/* Directional Wall Boundary Tags (Around Active Room) */}
+                  <g className="wall-boundary-tags">
+                    {/* North Boundary Tag */}
+                    <g transform={`translate(${toPxX(room.length / 2)}, ${toPxY(0) - wallThickPx - 16})`}>
+                      <rect x="-65" y="-8" width="130" height="16" rx="3" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="0.8" />
+                      <text x="0" y="3.5" textAnchor="middle" className="text-[8.5px] font-bold fill-slate-700 font-sans">
+                        ↑ {wallBoundaries.north}
+                      </text>
+                    </g>
+                    {/* South Boundary Tag */}
+                    <g transform={`translate(${toPxX(room.length / 2)}, ${toPxY(room.width) + wallThickPx + 22})`}>
+                      <rect x="-65" y="-8" width="130" height="16" rx="3" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="0.8" />
+                      <text x="0" y="3.5" textAnchor="middle" className="text-[8.5px] font-bold fill-slate-700 font-sans">
+                        ↓ {wallBoundaries.south}
+                      </text>
+                    </g>
+                    {/* West Boundary Tag */}
+                    <g transform={`translate(${toPxX(0) - wallThickPx - 46}, ${toPxY(room.width / 2)})`}>
+                      <rect x="-44" y="-8" width="88" height="16" rx="3" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="0.8" />
+                      <text x="0" y="3.5" textAnchor="middle" className="text-[8.5px] font-bold fill-slate-700 font-sans">
+                        ← {wallBoundaries.west}
+                      </text>
+                    </g>
+                    {/* East Boundary Tag */}
+                    <g transform={`translate(${toPxX(room.length) + wallThickPx + 46}, ${toPxY(room.width / 2)})`}>
+                      <rect x="-44" y="-8" width="88" height="16" rx="3" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="0.8" />
+                      <text x="0" y="3.5" textAnchor="middle" className="text-[8.5px] font-bold fill-slate-700 font-sans">
+                        → {wallBoundaries.east}
+                      </text>
+                    </g>
+                  </g>
+                </g>
+              )}
+
               {/* 3. Room Interior Floor Plate */}
               <rect
                 x={toPxX(0)}
                 y={toPxY(0)}
                 width={room.length * pxPerMeter}
                 height={room.width * pxPerMeter}
-                fill="#FDFDFD"
-                stroke="#64748B"
-                strokeWidth="1"
+                fill="#FFFFFF"
+                stroke="#0F172A"
+                strokeWidth="1.5"
               />
 
 

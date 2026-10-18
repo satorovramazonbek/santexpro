@@ -20,7 +20,9 @@ import {
   Compass,
   Info,
   Activity,
-  X
+  X,
+  Building2,
+  SlidersHorizontal
 } from 'lucide-react';
 
 interface HouseMasterPlanCanvasProps {
@@ -105,7 +107,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
   const [isRecalculatingRouting, setIsRecalculatingRouting] = useState<boolean>(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null);
 
-  // Tab paneli (inspector)
+  // Inspector tab
   const [activeTab, setActiveTab] = useState<'circuits' | 'manifold' | 'legend'>('circuits');
   const [isPanelExpanded, setIsPanelExpanded] = useState<boolean>(true);
 
@@ -439,20 +441,20 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
   }, [allCircuits, selectedCircuitId]);
 
   return (
-    <div className="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden shadow-2xl flex flex-col font-sans">
-      {/* 1. Header Toolbar */}
-      <div className="bg-slate-900 px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800">
+    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col font-sans">
+      {/* 1. Header Toolbar (Clean Light Engineering Design) */}
+      <div className="bg-slate-50 px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 text-slate-800">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl text-white shadow-md shadow-blue-500/20">
+          <div className="p-2.5 bg-blue-600 rounded-xl text-white shadow-xs">
             <Compass className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm sm:text-base text-white tracking-tight flex items-center gap-2">
-                Planta Geral de Piso Radiante (Master CAD Plan)
+              <h3 className="font-bold text-sm sm:text-base text-slate-900 tracking-tight flex items-center gap-2">
+                Umumiy Bino Issiq Pol Rejasi (Uponor CAD M 1:50)
               </h3>
-              <span className="text-[10px] font-mono bg-blue-950 text-blue-400 border border-blue-800/80 px-2 py-0.5 rounded-full font-semibold">
-                M 1:50 CAD
+              <span className="text-[10px] font-mono bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-bold">
+                OQ FON (CAD)
               </span>
               {isEditLayoutMode && (
                 <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
@@ -460,8 +462,8 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-slate-400">
-              Uponor standarti: T11 (suprimento/qizil), T12 (retorno/ko‘k), kollektor chiqishlari va to‘liq marshrut
+            <p className="text-[11px] text-slate-500">
+              Uponor standarti: T11 (uzatish/qizil), T12 (qaytish/ko‘k), kollektor chiqishlari va barcha xonalar ulanishi
             </p>
           </div>
         </div>
@@ -469,13 +471,13 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
         {/* Toolbar Controls */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Floor selector */}
-          <div className="flex items-center bg-slate-800/90 p-1 rounded-xl text-xs border border-slate-700/60">
+          <div className="flex items-center bg-white p-1 rounded-xl text-xs border border-slate-200 shadow-xs">
             <button
               onClick={() => setSelectedFloor('all')}
               className={`px-2.5 py-1 rounded-lg transition-all font-medium text-xs ${
                 selectedFloor === 'all'
                   ? 'bg-blue-600 text-white shadow-xs font-semibold'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Barcha qavatlar
@@ -487,7 +489,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                 className={`px-2.5 py-1 rounded-lg transition-all font-medium text-xs ${
                   selectedFloor === fl
                     ? 'bg-blue-600 text-white shadow-xs font-semibold'
-                    : 'text-slate-400 hover:text-slate-200'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 {fl}-qavat
@@ -499,19 +501,19 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
           <div className="relative">
             <button
               onClick={() => setShowLayerMenu(!showLayerMenu)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl border border-slate-700 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 shadow-xs transition-colors"
               title="Qatlamlarni ko'rsatish/yashirish"
             >
-              <Layers className="w-3.5 h-3.5 text-blue-400" />
+              <Layers className="w-3.5 h-3.5 text-blue-600" />
               <span>Qatlamlar</span>
             </button>
 
             {showLayerMenu && (
-              <div className="absolute right-0 top-full mt-2 w-52 bg-slate-900 border border-slate-700 rounded-xl p-3 shadow-xl z-50 text-xs space-y-2">
-                <div className="font-bold text-slate-200 pb-1 border-b border-slate-800 text-[11px] uppercase tracking-wider">
-                  CAD Qatlamlari
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-slate-200 rounded-xl p-3 shadow-xl z-50 text-xs space-y-2">
+                <div className="font-bold text-slate-800 pb-1 border-b border-slate-100 text-[11px] uppercase tracking-wider">
+                  CAD Chizma Qatlamlari
                 </div>
-                <label className="flex items-center justify-between text-slate-300 hover:text-white cursor-pointer py-1">
+                <label className="flex items-center justify-between text-slate-700 hover:text-slate-900 cursor-pointer py-1">
                   <span>Truba konturlari (T11/T12)</span>
                   <input
                     type="checkbox"
@@ -520,7 +522,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                     className="accent-blue-600 rounded"
                   />
                 </label>
-                <label className="flex items-center justify-between text-slate-300 hover:text-white cursor-pointer py-1">
+                <label className="flex items-center justify-between text-slate-700 hover:text-slate-900 cursor-pointer py-1">
                   <span>Magistral ulanishlar (Feeders)</span>
                   <input
                     type="checkbox"
@@ -529,8 +531,8 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                     className="accent-blue-600 rounded"
                   />
                 </label>
-                <label className="flex items-center justify-between text-slate-300 hover:text-white cursor-pointer py-1">
-                  <span>O‘lcham chiziqlari</span>
+                <label className="flex items-center justify-between text-slate-700 hover:text-slate-900 cursor-pointer py-1">
+                  <span>O‘lcham chiziqlari (Cotalar)</span>
                   <input
                     type="checkbox"
                     checked={layers.showDimensions}
@@ -538,8 +540,8 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                     className="accent-blue-600 rounded"
                   />
                 </label>
-                <label className="flex items-center justify-between text-slate-300 hover:text-white cursor-pointer py-1">
-                  <span>Kontur shtamplari & Matn</span>
+                <label className="flex items-center justify-between text-slate-700 hover:text-slate-900 cursor-pointer py-1">
+                  <span>Uponor shtamplari & Matn</span>
                   <input
                     type="checkbox"
                     checked={layers.showLabels}
@@ -547,7 +549,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                     className="accent-blue-600 rounded"
                   />
                 </label>
-                <label className="flex items-center justify-between text-slate-300 hover:text-white cursor-pointer py-1">
+                <label className="flex items-center justify-between text-slate-700 hover:text-slate-900 cursor-pointer py-1">
                   <span>Radiatorlar</span>
                   <input
                     type="checkbox"
@@ -564,7 +566,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
           <button
             onClick={handleRecalculateRouting}
             disabled={isRecalculatingRouting}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/90 hover:bg-indigo-600 text-white text-xs font-semibold rounded-xl border border-indigo-500 shadow-sm transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors disabled:opacity-50"
             title="Kollektordan xonalargacha bo'lgan feeder magistral liniyalarini avtomatik hisoblash"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRecalculatingRouting ? 'animate-spin' : ''}`} />
@@ -575,7 +577,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
           {!isEditLayoutMode ? (
             <button
               onClick={() => setIsEditLayoutMode(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 shadow-xs transition-colors"
               title="Xonalar va kollektorni reja bo‘ylab siljitish"
             >
               <Move className="w-3.5 h-3.5" />
@@ -585,10 +587,10 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
             <div className="flex items-center gap-1.5">
               <button
                 onClick={handleAutoArrange}
-                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl border border-slate-700 transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 transition-colors"
                 title="Xonalarni avtomatik joylashtirish"
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                 <span>Avto-joylash</span>
               </button>
 
@@ -603,7 +605,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
 
               <button
                 onClick={() => setIsEditLayoutMode(false)}
-                className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs rounded-xl"
+                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs rounded-xl"
               >
                 Yopish
               </button>
@@ -611,27 +613,27 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
           )}
 
           {/* Zoom & Fit controls */}
-          <div className="flex items-center bg-slate-800 rounded-xl p-1 text-slate-300 border border-slate-700">
+          <div className="flex items-center bg-white rounded-xl p-1 text-slate-700 border border-slate-200 shadow-xs">
             <button
               onClick={() => setZoom((z) => Math.max(0.4, z - 0.15))}
-              className="p-1 hover:text-white rounded"
+              className="p-1 hover:bg-slate-100 rounded"
               title="Kichiklashtirish"
             >
               <ZoomOut className="w-4 h-4" />
             </button>
-            <span className="px-1.5 text-[11px] font-mono text-slate-300 font-semibold">
+            <span className="px-1.5 text-[11px] font-mono text-slate-800 font-bold">
               {Math.round(zoom * 100)}%
             </span>
             <button
               onClick={() => setZoom((z) => Math.min(3.0, z + 0.15))}
-              className="p-1 hover:text-white rounded"
+              className="p-1 hover:bg-slate-100 rounded"
               title="Kattalashtirish"
             >
               <ZoomIn className="w-4 h-4" />
             </button>
             <button
               onClick={fitToView}
-              className="p-1 hover:text-white rounded ml-1 text-sky-400"
+              className="p-1 hover:bg-slate-100 rounded ml-1 text-blue-600"
               title="Rejani ekranga moslashtirish (Fit to View)"
             >
               <Maximize2 className="w-3.5 h-3.5" />
@@ -642,9 +644,9 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
 
       {/* Capacity Warning Banner */}
       {isOverCapacity && (
-        <div className="bg-red-500/15 border-b border-red-500/30 text-red-200 px-4 py-2 text-xs flex items-center justify-between gap-2">
+        <div className="bg-red-50 border-b border-red-200 text-red-800 px-4 py-2 text-xs flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
             <span>
               <b>Diqqat:</b> Kollektor chiqishlari soni yetarli emas! Mavjud konturlar soni:{' '}
               <b>{totalCircuitsCount} ta</b>, Kollektor sig‘imi: <b>{manifoldOutletsCount} ta</b>.
@@ -652,7 +654,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
           </div>
           <button
             onClick={() => handleExpandManifoldOutlets(totalCircuitsCount)}
-            className="px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-[11px] transition-colors shrink-0"
+            className="px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-[11px] transition-colors shrink-0 shadow-xs"
           >
             + Chiqishlarni {totalCircuitsCount} taga oshirish
           </button>
@@ -675,72 +677,48 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
         </div>
       )}
 
-      {/* 2. Interactive SVG Canvas Area */}
+      {/* 2. Pure White CAD Drawing Canvas Area (Matching Reference PDF Page 5) */}
       <div
         ref={containerRef}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onWheel={handleWheel}
-        className={`relative w-full h-[580px] bg-slate-950 overflow-hidden select-none cursor-${
+        className={`relative w-full h-[620px] bg-white overflow-hidden select-none cursor-${
           isEditLayoutMode ? 'default' : isPanning ? 'grabbing' : 'grab'
         }`}
         style={{
+          backgroundColor: '#FFFFFF',
           backgroundImage: layers.showGrid
             ? `
-            linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px)
+            linear-gradient(to right, #F1F5F9 1px, transparent 1px),
+            linear-gradient(to bottom, #F1F5F9 1px, transparent 1px)
           `
             : undefined,
           backgroundSize: `${pxPerMeter}px ${pxPerMeter}px`,
         }}
       >
         <svg width="100%" height="100%" className="absolute inset-0 pointer-events-none">
+          <defs>
+            {/* Architectural Wall Hatch Pattern for Real Walls */}
+            <pattern id="masterWallHatchLight" width="6" height="6" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+              <line x1="0" y1="0" x2="0" y2="6" stroke="#94A3B8" strokeWidth="0.8" />
+            </pattern>
+
+            {/* Glowing route highlight */}
+            <filter id="route-glow-light" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="0" stdDeviation="2.5" floodColor="#2563EB" floodOpacity="0.5" />
+            </filter>
+          </defs>
+
           <g transform={`translate(${pan.x}, ${pan.y})`}>
-            {/* Fine subgrid */}
-            {layers.showGrid && (
-              <defs>
-                <pattern
-                  id="house_master_grid_sub"
-                  width={pxPerMeter * 0.5}
-                  height={pxPerMeter * 0.5}
-                  patternUnits="userSpaceOnUse"
-                >
-                  <path
-                    d={`M ${pxPerMeter * 0.5} 0 L 0 0 0 ${pxPerMeter * 0.5}`}
-                    fill="none"
-                    stroke="rgba(255,255,255,0.02)"
-                    strokeWidth="0.8"
-                  />
-                </pattern>
-                {/* Glow filter for highlighted circuit */}
-                <filter id="route-glow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="3" result="glow" />
-                  <feMerge>
-                    <feMergeNode in="glow" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-              </defs>
-            )}
-
-            {layers.showGrid && (
-              <rect
-                x="-300"
-                y="-300"
-                width={buildingBounds.widthM * pxPerMeter + 600}
-                height={buildingBounds.heightM * pxPerMeter + 600}
-                fill="url(#house_master_grid_sub)"
-              />
-            )}
-
-            {/* A. Feeder Lines from Manifold to Rooms (Under floor level) */}
+            {/* A. Feeder Lines from Manifold through Corridors into Rooms (T11 Red, T12 Blue) */}
             {layers.showFeeders &&
               allCircuits.map(({ circuit, room }) => {
                 const isSelected = selectedCircuitId === circuit.id;
                 const isHovered = hoveredCircuitId === circuit.id;
                 const hasFocus = selectedCircuitId !== null;
-                const opacity = isSelected ? 1.0 : hasFocus ? 0.18 : 0.85;
+                const opacity = isSelected ? 1.0 : hasFocus ? 0.2 : 0.9;
 
                 const supPts = circuit.feeder_supply_points;
                 const retPts = circuit.feeder_return_points;
@@ -767,7 +745,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                     onMouseEnter={() => setHoveredCircuitId(circuit.id || null)}
                     onMouseLeave={() => setHoveredCircuitId(null)}
                   >
-                    {/* Wider transparent hit zone */}
+                    {/* Transparent thick hit area */}
                     <path d={supPathStr} fill="none" stroke="transparent" strokeWidth="14" />
                     <path d={retPathStr} fill="none" stroke="transparent" strokeWidth="14" />
 
@@ -776,21 +754,21 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                       d={supPathStr}
                       fill="none"
                       stroke="#EF4444"
-                      strokeWidth={isSelected ? '2.4' : isHovered ? '1.8' : '1.2'}
+                      strokeWidth={isSelected ? '2.4' : isHovered ? '1.8' : '1.15'}
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      filter={isSelected ? 'url(#route-glow)' : undefined}
+                      filter={isSelected ? 'url(#route-glow-light)' : undefined}
                     />
 
                     {/* Return Feeder (T12 Retorno / Blue) */}
                     <path
                       d={retPathStr}
                       fill="none"
-                      stroke="#38BDF8"
-                      strokeWidth={isSelected ? '2.4' : isHovered ? '1.8' : '1.2'}
+                      stroke="#2563EB"
+                      strokeWidth={isSelected ? '2.4' : isHovered ? '1.8' : '1.15'}
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      filter={isSelected ? 'url(#route-glow)' : undefined}
+                      filter={isSelected ? 'url(#route-glow-light)' : undefined}
                     />
 
                     {/* Protective corrugated sleeve marker at entry */}
@@ -808,8 +786,8 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                 );
               })}
 
-            {/* B. All Rooms CAD Rendering */}
-            {roomsToDisplay.map((r) => {
+            {/* B. All Rooms CAD Rendering on Clean White Paper */}
+            {roomsToDisplay.map((r, rIdx) => {
               const pos = roomPositions[r.id] || { x: 0, y: 0 };
               const rWidthPx = r.width * pxPerMeter;
               const rLengthPx = r.length * pxPerMeter;
@@ -823,6 +801,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
               const circuits = r.underfloor_circuits || [];
               const hasCircuits = circuits.length > 0;
               const showHeatingPiso = r.heating_preference !== 'radiator_only';
+              const roomNumber = ''.concat(...r.name.split('').filter((c) => !isNaN(parseInt(c, 10)))) || (rIdx + 17).toString();
 
               return (
                 <g
@@ -832,44 +811,37 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                   onClick={() => setSelectedRoomId(r.id)}
                   onMouseDown={(e) => handleItemMouseDown('room', r.id, pos, e)}
                 >
-                  {/* Floor slab background */}
+                  {/* Clean Floor Slab */}
                   <rect
                     x="0"
                     y="0"
                     width={rWidthPx}
                     height={rLengthPx}
-                    rx="3"
-                    fill={
-                      isSelected
-                        ? 'rgba(37, 99, 235, 0.16)'
-                        : isDragging
-                        ? 'rgba(245, 158, 11, 0.22)'
-                        : 'rgba(30, 41, 59, 0.85)'
-                    }
-                    stroke={isSelected ? '#3B82F6' : isDragging ? '#F59E0B' : 'rgba(100, 116, 139, 0.7)'}
-                    strokeWidth={isSelected ? '2.0' : '1.3'}
+                    fill={isSelected ? '#EFF6FF' : isDragging ? '#FEF3C7' : '#FFFFFF'}
+                    stroke={isSelected ? '#2563EB' : isDragging ? '#F59E0B' : '#0F172A'}
+                    strokeWidth={isSelected ? '2.0' : '1.5'}
                     strokeDasharray={isDragging ? '4 2' : undefined}
                   />
 
-                  {/* Architectural double-line walls */}
+                  {/* Architectural Double Walls with Clean Hatching */}
                   <rect
-                    x="3.5"
-                    y="3.5"
-                    width={Math.max(0, rWidthPx - 7)}
-                    height={Math.max(0, rLengthPx - 7)}
+                    x="4"
+                    y="4"
+                    width={Math.max(0, rWidthPx - 8)}
+                    height={Math.max(0, rLengthPx - 8)}
                     fill="none"
-                    stroke={isSelected ? '#60A5FA' : 'rgba(148, 163, 184, 0.35)'}
+                    stroke="#475569"
                     strokeWidth="0.8"
                   />
 
-                  {/* Real Underfloor Heating Circuits (Uponor T11 Red / T12 Blue) */}
+                  {/* Real Underfloor Heating Circuits (Uponor T11 Red / T12 Blue on White) */}
                   {layers.showTubes && showHeatingPiso && (
                     <g>
                       {hasCircuits ? (
                         circuits.map((circ) => {
                           const isCircSelected = selectedCircuitId === circ.id;
                           const hasFocus = selectedCircuitId !== null;
-                          const circOpacity = isCircSelected ? 1.0 : hasFocus ? 0.2 : 0.88;
+                          const circOpacity = isCircSelected ? 1.0 : hasFocus ? 0.22 : 0.95;
 
                           let supPts = circ.supply_path_points;
                           let retPts = circ.return_path_points;
@@ -916,10 +888,9 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                                   d={supStr}
                                   fill="none"
                                   stroke="#EF4444"
-                                  strokeWidth={isCircSelected ? '2.4' : '1.1'}
+                                  strokeWidth={isCircSelected ? '2.4' : '1.15'}
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
-                                  filter={isCircSelected ? 'url(#route-glow)' : undefined}
                                 />
                               )}
 
@@ -928,11 +899,10 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                                 <path
                                   d={retStr}
                                   fill="none"
-                                  stroke="#38BDF8"
-                                  strokeWidth={isCircSelected ? '2.4' : '1.1'}
+                                  stroke="#2563EB"
+                                  strokeWidth={isCircSelected ? '2.4' : '1.15'}
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
-                                  filter={isCircSelected ? 'url(#route-glow)' : undefined}
                                 />
                               )}
                             </g>
@@ -940,7 +910,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                         })
                       ) : (
                         // Dynamic preview coil if room not calculated yet
-                        <g opacity="0.35">
+                        <g opacity="0.45">
                           {Array.from({ length: Math.min(5, Math.floor(r.length / 0.8)) }).map((_, loopIdx) => {
                             const inset = (loopIdx + 1) * Math.max(8, pxPerMeter * 0.16);
                             if (rWidthPx - inset * 2 <= 12 || rLengthPx - inset * 2 <= 12) return null;
@@ -951,9 +921,9 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                                 y={inset}
                                 width={rWidthPx - inset * 2}
                                 height={rLengthPx - inset * 2}
-                                rx="4"
+                                rx="3"
                                 fill="none"
-                                stroke={loopIdx % 2 === 0 ? '#EF4444' : '#38BDF8'}
+                                stroke={loopIdx % 2 === 0 ? '#EF4444' : '#2563EB'}
                                 strokeWidth="1.0"
                                 strokeDasharray="4 2"
                               />
@@ -964,7 +934,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                     </g>
                   )}
 
-                  {/* Windows */}
+                  {/* Windows (Double-line glass frame on white wall) */}
                   {r.windows &&
                     r.windows.map((win, winIdx) => {
                       const winLenPx = (win.width || 1.5) * pxPerMeter;
@@ -974,42 +944,42 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                       let wx = 0, wy = 0, ww = 0, wh = 0;
                       if (wallIdx === 0) {
                         wx = winPosPx;
-                        wy = -2.5;
+                        wy = -3;
                         ww = Math.min(winLenPx, rWidthPx - wx);
-                        wh = 5.5;
+                        wh = 6;
                       } else if (wallIdx === 1) {
                         wx = rWidthPx - 3;
                         wy = winPosPx;
-                        ww = 5.5;
+                        ww = 6;
                         wh = Math.min(winLenPx, rLengthPx - wy);
                       } else if (wallIdx === 2) {
                         wx = winPosPx;
                         wy = rLengthPx - 3;
                         ww = Math.min(winLenPx, rWidthPx - wx);
-                        wh = 5.5;
+                        wh = 6;
                       } else {
-                        wx = -2.5;
+                        wx = -3;
                         wy = winPosPx;
-                        ww = 5.5;
+                        ww = 6;
                         wh = Math.min(winLenPx, rLengthPx - wy);
                       }
 
                       return (
                         <g key={winIdx}>
-                          <rect x={wx} y={wy} width={ww} height={wh} fill="#0284C7" stroke="#E2E8F0" strokeWidth="1.0" />
+                          <rect x={wx} y={wy} width={ww} height={wh} fill="#FFFFFF" stroke="#0284C7" strokeWidth="1.2" />
                           <line
                             x1={wallIdx % 2 === 0 ? wx : wx + ww / 2}
                             y1={wallIdx % 2 === 0 ? wy + wh / 2 : wy}
                             x2={wallIdx % 2 === 0 ? wx + ww : wx + ww / 2}
                             y2={wallIdx % 2 === 0 ? wy + wh / 2 : wy + wh}
-                            stroke="#FFFFFF"
-                            strokeWidth="0.8"
+                            stroke="#0284C7"
+                            strokeWidth="1.0"
                           />
                         </g>
                       );
                     })}
 
-                  {/* Doors with swing arc */}
+                  {/* Doors (Clean opening with swing trajectory arc, exactly matching Image 2) */}
                   {r.doors &&
                     r.doors.map((door, doorIdx) => {
                       const doorLenPx = (door.width || 0.9) * pxPerMeter;
@@ -1019,36 +989,39 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                       let dx = 0, dy = 0, dw = 0, dh = 0;
                       if (wallIdx === 2) {
                         dx = doorPosPx;
-                        dy = rLengthPx - 2.5;
+                        dy = rLengthPx - 3;
                         dw = Math.min(doorLenPx, rWidthPx - dx);
-                        dh = 4.5;
+                        dh = 6;
                       } else if (wallIdx === 0) {
                         dx = doorPosPx;
-                        dy = -2;
+                        dy = -3;
                         dw = Math.min(doorLenPx, rWidthPx - dx);
-                        dh = 4.5;
+                        dh = 6;
                       } else if (wallIdx === 1) {
-                        dx = rWidthPx - 2;
+                        dx = rWidthPx - 3;
                         dy = doorPosPx;
-                        dw = 4.5;
+                        dw = 6;
                         dh = Math.min(doorLenPx, rLengthPx - dy);
                       } else {
-                        dx = -2;
+                        dx = -3;
                         dy = doorPosPx;
-                        dw = 4.5;
+                        dw = 6;
                         dh = Math.min(doorLenPx, rLengthPx - dy);
                       }
 
                       return (
                         <g key={doorIdx}>
-                          <rect x={dx} y={dy} width={dw} height={dh} fill="#F59E0B" stroke="#FDE68A" strokeWidth="1.0" />
+                          <rect x={dx} y={dy} width={dw} height={dh} fill="#FFFFFF" stroke="#475569" strokeWidth="0.8" />
                           <path
                             d={`M ${dx} ${dy} A ${dw} ${dw} 0 0 1 ${dx + dw} ${dy}`}
                             fill="none"
-                            stroke="rgba(245, 158, 11, 0.45)"
+                            stroke="#64748B"
                             strokeWidth="0.8"
-                            strokeDasharray="2 2"
+                            strokeDasharray="3 2"
                           />
+                          <text x={dx + dw / 2} y={dy - 4} fill="#64748B" fontSize="6.5" fontStyle="italic" textAnchor="middle">
+                            Дв-{(doorIdx + 1)}
+                          </text>
                         </g>
                       );
                     })}
@@ -1069,48 +1042,44 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                             y="0"
                             width={rw}
                             height={rh}
-                            rx="2"
-                            fill="rgba(255, 255, 255, 0.95)"
-                            stroke="#EF4444"
+                            rx="1.5"
+                            fill="#FFFFFF"
+                            stroke="#DC2626"
                             strokeWidth="1.2"
                           />
-                          <line x1={rw * 0.25} y1="2" x2={rw * 0.25} y2={rh - 2} stroke="#DC2626" strokeWidth="0.8" />
-                          <line x1={rw * 0.5} y1="2" x2={rw * 0.5} y2={rh - 2} stroke="#DC2626" strokeWidth="0.8" />
-                          <line x1={rw * 0.75} y1="2" x2={rw * 0.75} y2={rh - 2} stroke="#DC2626" strokeWidth="0.8" />
+                          <line x1={rw * 0.25} y1="1" x2={rw * 0.25} y2={rh - 1} stroke="#DC2626" strokeWidth="0.8" />
+                          <line x1={rw * 0.5} y1="1" x2={rw * 0.5} y2={rh - 1} stroke="#DC2626" strokeWidth="0.8" />
+                          <line x1={rw * 0.75} y1="1" x2={rw * 0.75} y2={rh - 1} stroke="#DC2626" strokeWidth="0.8" />
                         </g>
                       );
                     })}
 
-                  {/* Room Text & Circuit Stamp Badges */}
+                  {/* Room Center Badge (Circle with room number, matching Image 2) */}
+                  <g transform={`translate(${rWidthPx / 2}, ${rLengthPx / 2})`}>
+                    <circle cx="0" cy="0" r="14" fill="#FFFFFF" stroke="#475569" strokeWidth="1.0" />
+                    <text x="0" y="4" textAnchor="middle" fill="#0F172A" fontSize="11" fontWeight="bold">
+                      {roomNumber}
+                    </text>
+                  </g>
+
+                  {/* Room Text Label */}
                   {layers.showLabels && (
-                    <g transform={`translate(${rWidthPx / 2}, ${rLengthPx / 2 - 12})`}>
-                      <text
-                        x="0"
-                        y="0"
-                        textAnchor="middle"
-                        fill="#F8FAFC"
-                        fontSize={Math.max(11, Math.min(14, pxPerMeter * 0.32))}
-                        fontWeight="bold"
-                      >
+                    <g transform={`translate(${rWidthPx / 2}, ${rLengthPx / 2 + 22})`}>
+                      <text x="0" y="0" textAnchor="middle" fill="#1E293B" fontSize="9.5" fontWeight="bold">
                         {r.name}
                       </text>
-                      <text x="0" y="13" textAnchor="middle" fill="#94A3B8" fontSize="9.5" fontFamily="monospace">
+                      <text x="0" y="11" textAnchor="middle" fill="#64748B" fontSize="8.5" fontFamily="monospace">
                         {r.length}x{r.width}m • {r.area} m²
                       </text>
-                      {heatLossW !== undefined && (
-                        <text x="0" y="26" textAnchor="middle" fill="#38BDF8" fontSize="9" fontWeight="600">
-                          {heatLossW.toFixed(0)} W ({specW?.toFixed(0)} W/m²)
-                        </text>
-                      )}
                     </g>
                   )}
 
-                  {/* Circuit Stamp Tags inside Room */}
+                  {/* Uponor Circuit Stamps (Matching Reference Image 2: Blue Outline Box with "uponor" logo) */}
                   {layers.showLabels &&
                     circuits.map((circ, cIdx) => {
                       const isCircSelected = selectedCircuitId === circ.id;
                       const badgeX = 8;
-                      const badgeY = 8 + cIdx * 18;
+                      const badgeY = 8 + cIdx * 20;
 
                       return (
                         <g
@@ -1123,48 +1092,52 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                           }}
                           className="cursor-pointer"
                         >
+                          {/* Uponor blue stamp box */}
                           <rect
                             x="0"
                             y="0"
-                            width="94"
-                            height="15"
-                            rx="3"
-                            fill={isCircSelected ? '#0284C7' : 'rgba(15, 23, 42, 0.9)'}
-                            stroke={isCircSelected ? '#38BDF8' : '#334155'}
-                            strokeWidth="1"
+                            width="86"
+                            height="16"
+                            fill="#FFFFFF"
+                            stroke={isCircSelected ? '#2563EB' : '#1D4ED8'}
+                            strokeWidth={isCircSelected ? '1.8' : '1.0'}
                           />
-                          <text x="5" y="10.5" fill="#FFFFFF" fontSize="8" fontWeight="bold">
-                            K-{circ.circuit_number} Ø{circ.pipe_diameter_mm || 16} L={circ.total_length_m?.toFixed(0)}m
+                          {/* "uponor" blue bold label */}
+                          <text x="4" y="11" fill="#1D4ED8" fontSize="7.5" fontWeight="bold">
+                            uponor
                           </text>
-                          {circ.manifold_port_index && (
-                            <text x="76" y="10.5" fill="#38BDF8" fontSize="7.5" fontWeight="bold">
-                              P#{circ.manifold_port_index}
-                            </text>
-                          )}
+                          <line x1="32" y1="2" x2="32" y2="14" stroke="#93C5FD" strokeWidth="0.8" />
+                          <text x="36" y="8" fill="#1E3A8A" fontSize="6.5" fontWeight="bold">
+                            K-{circ.circuit_number} (P#{circ.manifold_port_index || cIdx + 1})
+                          </text>
+                          <text x="36" y="14" fill="#3B82F6" fontSize="6" fontWeight="bold">
+                            {circ.total_length_m?.toFixed(0)}m • s={circ.spacing_mm || 150}
+                          </text>
                         </g>
                       );
                     })}
 
                   {/* Dimension Lines */}
                   {layers.showDimensions && (
-                    <g opacity="0.65">
+                    <g opacity="0.8">
                       {/* Top width */}
-                      <line x1="0" y1="-8" x2={rWidthPx} y2="-8" stroke="#94A3B8" strokeWidth="0.8" />
-                      <line x1="0" y1="-12" x2="0" y2="-4" stroke="#94A3B8" strokeWidth="0.8" />
-                      <line x1={rWidthPx} y1="-12" x2={rWidthPx} y2="-4" stroke="#94A3B8" strokeWidth="0.8" />
-                      <text x={rWidthPx / 2} y="-11" fill="#CBD5E1" fontSize="9" textAnchor="middle">
+                      <line x1="0" y1="-8" x2={rWidthPx} y2="-8" stroke="#64748B" strokeWidth="0.8" />
+                      <line x1="0" y1="-12" x2="0" y2="-4" stroke="#0F172A" strokeWidth="1.0" />
+                      <line x1={rWidthPx} y1="-12" x2={rWidthPx} y2="-4" stroke="#0F172A" strokeWidth="1.0" />
+                      <text x={rWidthPx / 2} y="-11" fill="#0F172A" fontSize="8.5" fontWeight="bold" textAnchor="middle">
                         {r.width} m
                       </text>
 
                       {/* Side length */}
-                      <line x1="-8" y1="0" x2="-8" y2={rLengthPx} stroke="#94A3B8" strokeWidth="0.8" />
-                      <line x1="-12" y1="0" x2="-4" y2="0" stroke="#94A3B8" strokeWidth="0.8" />
-                      <line x1="-12" y1={rLengthPx} x2="-4" y2={rLengthPx} stroke="#94A3B8" strokeWidth="0.8" />
+                      <line x1="-8" y1="0" x2="-8" y2={rLengthPx} stroke="#64748B" strokeWidth="0.8" />
+                      <line x1="-12" y1="0" x2="-4" y2="0" stroke="#0F172A" strokeWidth="1.0" />
+                      <line x1="-12" y1={rLengthPx} x2="-4" y2={rLengthPx} stroke="#0F172A" strokeWidth="1.0" />
                       <text
                         x="-11"
                         y={rLengthPx / 2}
-                        fill="#CBD5E1"
-                        fontSize="9"
+                        fill="#0F172A"
+                        fontSize="8.5"
+                        fontWeight="bold"
                         textAnchor="middle"
                         transform={`rotate(-90, -11, ${rLengthPx / 2})`}
                       >
@@ -1176,7 +1149,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
               );
             })}
 
-            {/* C. Manifold Cabinet (Uponor / Valtec Distribution Cabinet) */}
+            {/* C. Manifold Cabinet (Uponor Vario S Cabinet on White Paper) */}
             <g
               transform={`translate(${manifoldPos.x * pxPerMeter}, ${manifoldPos.y * pxPerMeter})`}
               className="pointer-events-auto cursor-pointer"
@@ -1189,15 +1162,14 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                 y="-16"
                 width={Math.max(110, manifoldOutletsCount * 12 + 28)}
                 height="46"
-                rx="4"
-                fill="#0F172A"
+                fill="#FFFFFF"
                 stroke={isOverCapacity ? '#EF4444' : '#0284C7'}
                 strokeWidth="1.8"
-                filter="drop-shadow(0 4px 6px rgba(0,0,0,0.5))"
+                filter="drop-shadow(0 2px 4px rgba(0,0,0,0.15))"
               />
 
               {/* Cabinet title */}
-              <text x="0" y="-4" fill="#38BDF8" fontSize="7.5" fontWeight="bold" letterSpacing="0.5">
+              <text x="0" y="-4" fill="#0284C7" fontSize="7.5" fontWeight="bold" letterSpacing="0.5">
                 KOLLEKTOR SHKAF (ШРВ-{manifoldOutletsCount})
               </text>
 
@@ -1217,7 +1189,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                 y1="18"
                 x2={manifoldOutletsCount * 12 + 6}
                 y2="18"
-                stroke="#38BDF8"
+                stroke="#2563EB"
                 strokeWidth="2.4"
                 strokeLinecap="round"
               />
@@ -1245,8 +1217,8 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                       cx={portX}
                       cy="8"
                       r={isPortSelected ? '3.5' : '2.2'}
-                      fill={connectedCircuit ? '#EF4444' : '#64748B'}
-                      stroke="#FFFFFF"
+                      fill={connectedCircuit ? '#EF4444' : '#CBD5E1'}
+                      stroke="#0F172A"
                       strokeWidth={isPortSelected ? '1.2' : '0.6'}
                     />
                     {/* Return nipple */}
@@ -1254,12 +1226,12 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                       cx={portX + 2}
                       cy="18"
                       r={isPortSelected ? '3.5' : '2.2'}
-                      fill={connectedCircuit ? '#38BDF8' : '#64748B'}
-                      stroke="#FFFFFF"
+                      fill={connectedCircuit ? '#2563EB' : '#CBD5E1'}
+                      stroke="#0F172A"
                       strokeWidth={isPortSelected ? '1.2' : '0.6'}
                     />
                     {/* Port number label */}
-                    <text x={portX} y="27" fill="#94A3B8" fontSize="6" fontWeight="bold" textAnchor="middle">
+                    <text x={portX} y="27" fill="#475569" fontSize="6.5" fontWeight="bold" textAnchor="middle">
                       {portNum}
                     </text>
                   </g>
@@ -1269,13 +1241,13 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
           </g>
         </svg>
 
-        {/* CAD Stamp in bottom right */}
-        <div className="absolute bottom-3 right-3 bg-slate-900/90 backdrop-blur-md p-3 rounded-xl border border-slate-800 text-[10px] text-slate-300 font-mono shadow-2xl flex items-center gap-4">
+        {/* CAD Stamp in bottom right (White Paper Style) */}
+        <div className="absolute bottom-3 right-3 bg-white/95 p-3 rounded-xl border border-slate-300 text-[10px] text-slate-700 font-mono shadow-md flex items-center gap-4">
           <div>
-            <div className="font-bold text-white text-xs">SantexPro Master CAD</div>
-            <div className="text-slate-400">EN 1264 / KMK 2.04.05-97</div>
+            <div className="font-bold text-slate-900 text-xs">SantexPro Master CAD</div>
+            <div className="text-slate-500">EN 1264 / KMK 2.04.05-97</div>
           </div>
-          <div className="border-l border-slate-700 pl-3">
+          <div className="border-l border-slate-200 pl-3">
             <div>Masshtab: <b>1:50</b></div>
             <div>Jami xonalar: <b>{roomsToDisplay.length} ta</b></div>
             <div>Issiq pol konturlari: <b>{totalCircuitsCount} ta</b></div>
@@ -1291,17 +1263,17 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
         )}
       </div>
 
-      {/* 3. Bottom Engineering Drawer / Inspector Panel */}
-      <div className="bg-slate-900 border-t border-slate-800 flex flex-col">
+      {/* 3. Bottom Engineering Drawer / Inspector Panel (Clean Light Theme) */}
+      <div className="bg-slate-50 border-t border-slate-200 flex flex-col">
         {/* Tab Headers */}
-        <div className="flex items-center justify-between px-5 pt-3 border-b border-slate-800">
+        <div className="flex items-center justify-between px-5 pt-3 border-b border-slate-200 bg-white">
           <div className="flex items-center gap-1">
             <button
               onClick={() => setActiveTab('circuits')}
               className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-t-xl transition-all border-b-2 ${
                 activeTab === 'circuits'
-                  ? 'bg-slate-800 text-sky-400 border-sky-400 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 border-transparent'
+                  ? 'bg-slate-50 text-blue-600 border-blue-600 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 border-transparent'
               }`}
             >
               <Activity className="w-3.5 h-3.5" />
@@ -1312,8 +1284,8 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
               onClick={() => setActiveTab('manifold')}
               className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-t-xl transition-all border-b-2 ${
                 activeTab === 'manifold'
-                  ? 'bg-slate-800 text-sky-400 border-sky-400 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 border-transparent'
+                  ? 'bg-slate-50 text-blue-600 border-blue-600 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 border-transparent'
               }`}
             >
               <Box className="w-3.5 h-3.5" />
@@ -1324,8 +1296,8 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
               onClick={() => setActiveTab('legend')}
               className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-t-xl transition-all border-b-2 ${
                 activeTab === 'legend'
-                  ? 'bg-slate-800 text-sky-400 border-sky-400 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 border-transparent'
+                  ? 'bg-slate-50 text-blue-600 border-blue-600 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 border-transparent'
               }`}
             >
               <Info className="w-3.5 h-3.5" />
@@ -1335,7 +1307,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
 
           <button
             onClick={() => setIsPanelExpanded(!isPanelExpanded)}
-            className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded"
+            className="text-xs font-semibold text-slate-500 hover:text-slate-900 px-2 py-1 rounded"
           >
             {isPanelExpanded ? "Kichraytirish" : "Kattalashtirish"}
           </button>
@@ -1343,41 +1315,41 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
 
         {/* Tab Content */}
         {isPanelExpanded && (
-          <div className="p-4 max-h-56 overflow-y-auto">
+          <div className="p-4 max-h-56 overflow-y-auto bg-slate-50">
             {activeTab === 'circuits' && (
               <div className="space-y-3">
                 {/* Active circuit inspector highlight card */}
                 {activeCircuitDetails && (
-                  <div className="p-3 bg-blue-950/60 border border-blue-700/60 rounded-xl flex flex-wrap items-center justify-between gap-3">
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-xs">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-blue-600 rounded-lg text-white">
                         <Flame className="w-5 h-5" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-white text-sm">
+                          <h4 className="font-bold text-slate-900 text-sm">
                             Kontur #{activeCircuitDetails.circuit.circuit_number}: {activeCircuitDetails.room.name}
                           </h4>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-sky-950 text-sky-300 border border-sky-700 font-bold">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-blue-100 text-blue-800 border border-blue-300 font-bold">
                             Port #{activeCircuitDetails.circuit.manifold_port_index || '—'}
                           </span>
                           {activeCircuitDetails.circuit.is_locked ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-950 text-amber-300 border border-amber-700 font-bold flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-800 border border-amber-300 font-bold flex items-center gap-1">
                               <Lock className="w-3 h-3" /> Qulflangan
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-700 border border-slate-300 flex items-center gap-1">
                               <Unlock className="w-3 h-3" /> Tahrirlanadi
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-300 mt-1">
+                        <p className="text-xs text-slate-600 mt-1">
                           Truba: <b>Ø{activeCircuitDetails.circuit.pipe_diameter_mm || 16} mm Uponor pePEX</b> •
                           Maydon: <b>{activeCircuitDetails.circuit.heated_area || activeCircuitDetails.room.area} m²</b> •
                           Qadam: <b>{activeCircuitDetails.circuit.spacing_mm || 150} mm</b> •
                           Pol trubasi: <b>{activeCircuitDetails.circuit.floor_length_m?.toFixed(1) || 0} m</b> +
                           Magistral ulanish: <b>{activeCircuitDetails.circuit.manifold_lead_in_m?.toFixed(1) || 0} m</b> =
-                          Jami: <b className="text-sky-300">{activeCircuitDetails.circuit.total_length_m?.toFixed(1) || 0} m</b>
+                          Jami: <b className="text-blue-700">{activeCircuitDetails.circuit.total_length_m?.toFixed(1) || 0} m</b>
                         </p>
                       </div>
                     </div>
@@ -1390,16 +1362,16 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                             !!activeCircuitDetails.circuit.is_locked
                           )
                         }
-                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 flex items-center gap-1.5"
+                        className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 flex items-center gap-1.5 shadow-xs"
                       >
                         {activeCircuitDetails.circuit.is_locked ? (
                           <>
-                            <Unlock className="w-3.5 h-3.5 text-amber-400" />
+                            <Unlock className="w-3.5 h-3.5 text-amber-600" />
                             <span>Qulfdan chiqarish</span>
                           </>
                         ) : (
                           <>
-                            <Lock className="w-3.5 h-3.5 text-slate-400" />
+                            <Lock className="w-3.5 h-3.5 text-slate-500" />
                             <span>Qulflash</span>
                           </>
                         )}
@@ -1407,7 +1379,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
 
                       <button
                         onClick={() => onOpenRoomEditor(activeCircuitDetails.room.id)}
-                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg flex items-center gap-1.5"
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-xs"
                       >
                         <span>2D Xonada ochish</span>
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -1415,7 +1387,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
 
                       <button
                         onClick={() => setSelectedCircuitId(null)}
-                        className="p-1.5 text-slate-400 hover:text-white rounded-lg"
+                        className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg"
                         title="Dastlabki holatga qaytish"
                       >
                         <X className="w-4 h-4" />
@@ -1424,10 +1396,10 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                   </div>
                 )}
 
-                {/* Circuit Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-300">
-                    <thead className="bg-slate-800 text-slate-400 uppercase text-[10px] font-bold">
+                {/* Circuit Table in Clean Light Theme */}
+                <div className="overflow-x-auto bg-white rounded-xl border border-slate-200">
+                  <table className="w-full text-left text-xs text-slate-700">
+                    <thead className="bg-slate-100 text-slate-600 uppercase text-[10px] font-bold border-b border-slate-200">
                       <tr>
                         <th className="px-3 py-2">Kontur</th>
                         <th className="px-3 py-2">Xona</th>
@@ -1440,7 +1412,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                         <th className="px-3 py-2 text-right">Amal</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800">
+                    <tbody className="divide-y divide-slate-100">
                       {allCircuits.map(({ circuit, room }) => {
                         const isSelected = selectedCircuitId === circuit.id;
                         return (
@@ -1448,15 +1420,15 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                             key={circuit.id || circuit.circuit_number}
                             onClick={() => setSelectedCircuitId(circuit.id || null)}
                             className={`cursor-pointer transition-colors ${
-                              isSelected ? 'bg-blue-900/40 text-white font-semibold' : 'hover:bg-slate-800/60'
+                              isSelected ? 'bg-blue-50 text-blue-950 font-semibold' : 'hover:bg-slate-50'
                             }`}
                           >
-                            <td className="px-3 py-2 font-mono font-bold text-sky-400">
+                            <td className="px-3 py-2 font-mono font-bold text-blue-600">
                               K-{circuit.circuit_number}
                             </td>
                             <td className="px-3 py-2 font-medium">{room.name}</td>
                             <td className="px-3 py-2">
-                              <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-[11px] font-mono">
+                              <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-[11px] font-mono font-bold">
                                 Port #{circuit.manifold_port_index || '—'}
                               </span>
                             </td>
@@ -1464,19 +1436,19 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                               Ø{circuit.pipe_diameter_mm || 16} mm • s={circuit.spacing_mm || 150} mm
                             </td>
                             <td className="px-3 py-2 font-mono">{circuit.floor_length_m?.toFixed(1) || 0} m</td>
-                            <td className="px-3 py-2 font-mono text-slate-400">
+                            <td className="px-3 py-2 font-mono text-slate-500">
                               {circuit.manifold_lead_in_m?.toFixed(1) || 0} m
                             </td>
-                            <td className="px-3 py-2 font-mono font-bold text-white">
+                            <td className="px-3 py-2 font-mono font-bold text-slate-900">
                               {circuit.total_length_m?.toFixed(1) || 0} m
                             </td>
                             <td className="px-3 py-2">
                               {circuit.is_locked ? (
-                                <span className="text-amber-400 flex items-center gap-1">
+                                <span className="text-amber-600 font-semibold flex items-center gap-1">
                                   <Lock className="w-3 h-3" /> Qulflangan
                                 </span>
                               ) : (
-                                <span className="text-slate-400 flex items-center gap-1">
+                                <span className="text-slate-500 flex items-center gap-1">
                                   <Unlock className="w-3 h-3" /> Ochiq
                                 </span>
                               )}
@@ -1487,7 +1459,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                                   e.stopPropagation();
                                   onOpenRoomEditor(room.id);
                                 }}
-                                className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded text-[11px] transition-colors"
+                                className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded text-[11px] transition-colors border border-blue-200"
                               >
                                 Tahrirlash
                               </button>
@@ -1502,26 +1474,26 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
             )}
 
             {activeTab === 'manifold' && (
-              <div className="space-y-4 text-xs text-slate-300">
+              <div className="space-y-4 text-xs text-slate-700">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-3 bg-slate-800 rounded-xl border border-slate-700">
-                    <div className="text-slate-400 text-[11px] font-bold">Kollektor Modeli</div>
-                    <div className="text-sm font-bold text-white mt-1">
+                  <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-xs">
+                    <div className="text-slate-500 text-[11px] font-bold">Kollektor Modeli</div>
+                    <div className="text-sm font-bold text-slate-900 mt-1">
                       {primaryManifold?.model_name || "Uponor Vario S / Valtec VTc.594"}
                     </div>
-                    <div className="text-[11px] text-slate-400 mt-1">
+                    <div className="text-[11px] text-slate-500 mt-1">
                       Joylashuv: X={manifoldPos.x.toFixed(2)} m, Y={manifoldPos.y.toFixed(2)} m
                     </div>
                   </div>
 
-                  <div className="p-3 bg-slate-800 rounded-xl border border-slate-700">
-                    <div className="text-slate-400 text-[11px] font-bold">Portlar Sig‘imi</div>
-                    <div className="text-sm font-bold text-white mt-1 flex items-center gap-2">
-                      <span className={isOverCapacity ? 'text-red-400' : 'text-emerald-400'}>
+                  <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-xs">
+                    <div className="text-slate-500 text-[11px] font-bold">Portlar Sig‘imi</div>
+                    <div className="text-sm font-bold text-slate-900 mt-1 flex items-center gap-2">
+                      <span className={isOverCapacity ? 'text-red-600 font-bold' : 'text-emerald-700 font-bold'}>
                         {totalCircuitsCount} / {manifoldOutletsCount} Chiqish band
                       </span>
                     </div>
-                    <div className="w-full bg-slate-700 h-2 rounded-full mt-2 overflow-hidden">
+                    <div className="w-full bg-slate-100 h-2 rounded-full mt-2 overflow-hidden border border-slate-200">
                       <div
                         className={`h-full ${isOverCapacity ? 'bg-red-500' : 'bg-emerald-500'}`}
                         style={{
@@ -1531,18 +1503,18 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                     </div>
                   </div>
 
-                  <div className="p-3 bg-slate-800 rounded-xl border border-slate-700 flex flex-col justify-between">
-                    <div className="text-slate-400 text-[11px] font-bold">Kengaytirish</div>
+                  <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
+                    <div className="text-slate-500 text-[11px] font-bold">Kengaytirish</div>
                     <div className="flex items-center gap-2 mt-2">
                       <button
                         onClick={() => handleExpandManifoldOutlets(manifoldOutletsCount + 1)}
-                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-xs"
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs shadow-xs"
                       >
                         + 1 Chiqish qo‘shish
                       </button>
                       <button
                         onClick={() => handleExpandManifoldOutlets(Math.max(2, manifoldOutletsCount - 1))}
-                        className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg font-bold text-xs"
+                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-xs border border-slate-200"
                       >
                         - 1 Kamaytirish
                       </button>
@@ -1551,7 +1523,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                 </div>
 
                 {/* Port by port list */}
-                <div className="font-bold text-white pt-2">Kollektor chiqishlari va Balansirovka:</div>
+                <div className="font-bold text-slate-900 pt-2">Kollektor chiqishlari va Balansirovka:</div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">
                   {Array.from({ length: manifoldOutletsCount }).map((_, pIdx) => {
                     const pNum = pIdx + 1;
@@ -1568,27 +1540,27 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                         className={`p-2.5 rounded-xl border cursor-pointer transition-all ${
                           cMatch
                             ? selectedCircuitId === cMatch.circuit.id
-                              ? 'bg-blue-900/60 border-blue-400 text-white'
-                              : 'bg-slate-800/80 border-slate-700 text-slate-200 hover:border-slate-500'
-                            : 'bg-slate-900 border-slate-800 text-slate-500'
+                              ? 'bg-blue-100 border-blue-500 text-blue-950 font-semibold shadow-xs'
+                              : 'bg-white border-slate-200 text-slate-800 hover:border-blue-300'
+                            : 'bg-slate-50 border-slate-200 text-slate-400'
                         }`}
                       >
                         <div className="flex items-center justify-between text-[11px] font-bold">
                           <span>Port #{pNum}</span>
                           <span
-                            className={`w-2 h-2 rounded-full ${cMatch ? 'bg-emerald-400' : 'bg-slate-600'}`}
+                            className={`w-2 h-2 rounded-full ${cMatch ? 'bg-emerald-500' : 'bg-slate-300'}`}
                           />
                         </div>
                         {cMatch ? (
                           <div className="mt-1">
-                            <div className="font-semibold text-sky-400 truncate">K-{cMatch.circuit.circuit_number}</div>
-                            <div className="text-[10px] text-slate-400 truncate">{cMatch.room.name}</div>
-                            <div className="text-[10px] text-slate-300 font-mono mt-0.5">
+                            <div className="font-bold text-blue-600 truncate">K-{cMatch.circuit.circuit_number}</div>
+                            <div className="text-[10px] text-slate-600 truncate">{cMatch.room.name}</div>
+                            <div className="text-[10px] text-slate-800 font-mono mt-0.5 font-bold">
                               {cMatch.circuit.total_length_m?.toFixed(0)}m
                             </div>
                           </div>
                         ) : (
-                          <div className="text-[10px] text-slate-500 mt-2">Bo‘sh chiqish</div>
+                          <div className="text-[10px] text-slate-400 mt-2">Bo‘sh chiqish</div>
                         )}
                       </div>
                     );
@@ -1598,15 +1570,15 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
             )}
 
             {activeTab === 'legend' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs text-slate-300">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs text-slate-700 bg-white p-3 rounded-xl border border-slate-200">
                 <div className="space-y-2">
-                  <div className="font-bold text-white text-[11px] uppercase tracking-wider">Trubalar va Oqim</div>
+                  <div className="font-bold text-slate-900 text-[11px] uppercase tracking-wider">Trubalar va Oqim</div>
                   <div className="flex items-center gap-2.5">
                     <span className="w-6 h-1 bg-red-500 rounded"></span>
                     <span>T11 Uzatish trubasi (Suprimento / 45°C)</span>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <span className="w-6 h-1 bg-sky-400 rounded"></span>
+                    <span className="w-6 h-1 bg-blue-600 rounded"></span>
                     <span>T12 Qaytish trubasi (Retorno / 35°C)</span>
                   </div>
                   <div className="flex items-center gap-2.5">
@@ -1616,9 +1588,9 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <div className="font-bold text-white text-[11px] uppercase tracking-wider">Uskunalar</div>
+                  <div className="font-bold text-slate-900 text-[11px] uppercase tracking-wider">Uskunalar</div>
                   <div className="flex items-center gap-2.5">
-                    <span className="w-5 h-3 bg-slate-900 border border-sky-400 text-[8px] text-sky-400 font-bold flex items-center justify-center rounded-xs">
+                    <span className="w-5 h-3 bg-white border border-blue-600 text-[8px] text-blue-600 font-bold flex items-center justify-center rounded-xs">
                       ШРВ
                     </span>
                     <span>Taqsimlash kollektor shkafi (Uponor / Valtec)</span>
@@ -1630,14 +1602,14 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <div className="font-bold text-white text-[11px] uppercase tracking-wider">Konstruktsiya</div>
+                  <div className="font-bold text-slate-900 text-[11px] uppercase tracking-wider">Konstruktsiya</div>
                   <div className="flex items-center gap-2.5">
-                    <span className="w-6 h-2 bg-sky-600 rounded-xs"></span>
+                    <span className="w-6 h-2 bg-blue-100 border border-blue-500 rounded-xs"></span>
                     <span>Deraza bloklari (2 kamerali oynapaket)</span>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <span className="w-6 h-1.5 bg-amber-500 rounded-xs"></span>
-                    <span>Eshik va ochilish trayektoriyasi</span>
+                    <span className="w-6 h-1.5 border-t border-dashed border-slate-600"></span>
+                    <span>Eshik va ochilish trayektoriyasi (Дв-1)</span>
                   </div>
                 </div>
               </div>
