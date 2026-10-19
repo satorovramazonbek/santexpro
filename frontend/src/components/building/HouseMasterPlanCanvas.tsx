@@ -80,6 +80,65 @@ function computeBifilarSpiral(
   return { supply, returnPts };
 }
 
+// Client-side fallback feeder route generator via corridor and doorway
+function computeClientFeederRoute(
+  manifoldPos: { x: number; y: number },
+  room: Room,
+  roomPos: { x: number; y: number },
+  portIndex: number,
+  entryPt: [number, number],
+  exitPt: [number, number],
+  corridorY: number = 6.9
+): { sup: [number, number][]; ret: [number, number][] } {
+  const rx = roomPos.x;
+  const ry = roomPos.y;
+  const rw = room.width || 4.0;
+  const rl = room.length || 5.0;
+
+  const door = room.doors?.find((d) => d.wall_index === 2) || room.doors?.[0];
+  let doorGx = rx + rw / 2.0;
+  let doorGy = ry + rl;
+  if (door) {
+    if (door.wall_index === 2 || door.wall_index === 0) {
+      doorGx = rx + (door.position_along_wall || 1.0) + (door.width || 0.9) / 2.0;
+      doorGy = ry + (door.wall_index === 2 ? rl : 0.0);
+    } else {
+      doorGx = rx + (door.wall_index === 1 ? rw : 0.0);
+      doorGy = ry + (door.position_along_wall || 1.0) + (door.width || 0.9) / 2.0;
+    }
+  }
+
+  const trunkY = corridorY + (portIndex - 1) * 0.04;
+  const portOffX = (portIndex - 1) * 0.06;
+  const mSupX = manifoldPos.x + portOffX;
+  const mRetX = manifoldPos.x + portOffX + 0.03;
+
+  const gxIn = rx + entryPt[0];
+  const gyIn = ry + entryPt[1];
+  const gxOut = rx + exitPt[0];
+  const gyOut = ry + exitPt[1];
+
+  const sup: [number, number][] = [
+    [mSupX, manifoldPos.y],
+    [mSupX, trunkY],
+    [doorGx - 0.04, trunkY],
+    [doorGx - 0.04, doorGy],
+    [gxIn, doorGy - 0.15],
+    [gxIn, gyIn],
+  ];
+
+  const ret: [number, number][] = [
+    [gxOut, gyOut],
+    [gxOut, doorGy - 0.15],
+    [doorGx + 0.04, doorGy],
+    [doorGx + 0.04, trunkY],
+    [mRetX, trunkY],
+    [mRetX, manifoldPos.y],
+  ];
+
+  return { sup, ret };
+}
+
 export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
   project,
   onOpenRoomEditor,
@@ -152,16 +211,21 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
     const rowLimit = 16.0;
 
     project.rooms.forEach((r) => {
-      if (r.position_x !== undefined && r.position_y !== undefined && (r.position_x !== 0 || r.position_y !== 0)) {
-        initialPos[r.id] = { x: r.position_x, y: r.position_y };
+      if (
+        r.position_x !== undefined &&
+        r.position_x !== null &&
+        r.position_y !== undefined &&
+        r.position_y !== null
+      ) {
+        initialPos[r.id] = { x: Number(r.position_x), y: Number(r.position_y) };
       } else {
         if (curX + r.width > rowLimit && curX > 0) {
           curX = 0;
-          curY += maxHeight + 0.6;
+          curY += maxHeight;
           maxHeight = 0;
         }
         initialPos[r.id] = { x: Number(curX.toFixed(2)), y: Number(curY.toFixed(2)) };
-        curX += r.width + 0.6;
+        curX += r.width;
         if (r.length > maxHeight) maxHeight = r.length;
       }
     });
@@ -183,6 +247,36 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
     if (!project.rooms) return [];
     return project.rooms.filter((r) => selectedFloor === 'all' || r.floor_number === selectedFloor);
   }, [project.rooms, selectedFloor]);
+
+  // Shared Corridor / Hallway Layout
+  const corridorLayout = useMemo(() => {
+    if (roomsToDisplay.length === 0) return null;
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let maxBottomY = -Infinity;
+
+    roomsToDisplay.forEach((r) => {
+      const pos = roomPositions[r.id] || { x: 0, y: 0 };
+      if (pos.x < minX) minX = pos.x;
+      const right = pos.x + r.width;
+      if (right > maxX) maxX = right;
+      const bottom = pos.y + r.length;
+      if (bottom > maxBottomY) maxBottomY = bottom;
+    });
+
+    if (minX === Infinity) {
+      minX = 0;
+      maxX = 12.0;
+      maxBottomY = 6.0;
+    }
+
+    return {
+      x: minX,
+      y: maxBottomY,
+      width: Math.max(maxX - minX, 10.0),
+      height: 1.8,
+    };
+  }, [roomsToDisplay, roomPositions]);
 
   // All circuits flat list
   const allCircuits = useMemo(() => {
@@ -245,7 +339,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
     });
   }, [buildingBounds]);
 
-  // Auto arrange
+  // Auto arrange with shared partition walls
   const handleAutoArrange = () => {
     if (!project.rooms) return;
     const newPos: Record<number, { x: number; y: number }> = {};
@@ -257,11 +351,11 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
     project.rooms.forEach((r) => {
       if (curX + r.width > maxRowW && curX > 0) {
         curX = 0;
-        curY += maxH + 0.6;
+        curY += maxH;
         maxH = 0;
       }
       newPos[r.id] = { x: Number(curX.toFixed(2)), y: Number(curY.toFixed(2)) };
-      curX += r.width + 0.6;
+      curX += r.width;
       if (r.length > maxH) maxH = r.length;
     });
 
@@ -712,16 +806,94 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
           </defs>
 
           <g transform={`translate(${pan.x}, ${pan.y})`}>
-            {/* A. Feeder Lines from Manifold through Corridors into Rooms (T11 Red, T12 Blue) */}
+            {/* 1. Architectural Shared Corridor Layer (Dahliz / Umumiy Yo‘lak) */}
+            {corridorLayout && (
+              <g className="corridor-layer">
+                {/* Corridor Floor Slab */}
+                <rect
+                  x={corridorLayout.x * pxPerMeter}
+                  y={corridorLayout.y * pxPerMeter}
+                  width={corridorLayout.width * pxPerMeter}
+                  height={corridorLayout.height * pxPerMeter}
+                  fill="#F8FAFC"
+                  stroke="#0F172A"
+                  strokeWidth="1.6"
+                />
+                {/* Inner Wall boundary / Hatching */}
+                <rect
+                  x={corridorLayout.x * pxPerMeter + 4}
+                  y={corridorLayout.y * pxPerMeter + 4}
+                  width={corridorLayout.width * pxPerMeter - 8}
+                  height={corridorLayout.height * pxPerMeter - 8}
+                  fill="none"
+                  stroke="#94A3B8"
+                  strokeWidth="0.8"
+                  strokeDasharray="4 2"
+                />
+                {/* Corridor Trunk Pipeline Track (Trassa kanali) */}
+                <rect
+                  x={(corridorLayout.x + 0.6) * pxPerMeter}
+                  y={(corridorLayout.y + 0.82) * pxPerMeter}
+                  width={(corridorLayout.width - 1.2) * pxPerMeter}
+                  height={0.42 * pxPerMeter}
+                  rx="3"
+                  fill="#F1F5F9"
+                  stroke="#CBD5E1"
+                  strokeWidth="0.8"
+                  strokeDasharray="3 3"
+                />
+                {/* Corridor Badge & Label */}
+                <g transform={`translate(${(corridorLayout.x + corridorLayout.width / 2) * pxPerMeter}, ${(corridorLayout.y + 0.42) * pxPerMeter})`}>
+                  <rect x="-90" y="-10" width="180" height="20" rx="4" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="0.8" />
+                  <text x="0" y="4" textAnchor="middle" fill="#334155" fontSize="8.5" fontWeight="bold">
+                    Dahliz (Umumiy Yo‘lak) • Magistral trassasi
+                  </text>
+                </g>
+                {/* Main Entrance Door (Kirish eshigi D-0) on corridor bottom wall */}
+                <g transform={`translate(${(corridorLayout.x + 1.2) * pxPerMeter}, ${(corridorLayout.y + corridorLayout.height) * pxPerMeter})`}>
+                  <rect x="0" y="-3" width={0.9 * pxPerMeter} height="6" fill="#FFFFFF" stroke="#0F172A" strokeWidth="1.2" />
+                  <path
+                    d={`M 0 0 A ${0.9 * pxPerMeter} ${0.9 * pxPerMeter} 0 0 1 ${0.9 * pxPerMeter} 0`}
+                    fill="none"
+                    stroke="#64748B"
+                    strokeWidth="1.0"
+                    strokeDasharray="3 2"
+                  />
+                  <text x={(0.45 * pxPerMeter)} y="13" fill="#0F172A" fontSize="7" fontWeight="bold" textAnchor="middle">
+                    D-0 (Bosh kirish eshigi)
+                  </text>
+                </g>
+              </g>
+            )}
+
+            {/* 2. Feeder Lines from Manifold through Corridors into Rooms (T11 Red, T12 Blue) */}
             {layers.showFeeders &&
               allCircuits.map(({ circuit, room }) => {
                 const isSelected = selectedCircuitId === circuit.id;
                 const isHovered = hoveredCircuitId === circuit.id;
                 const hasFocus = selectedCircuitId !== null;
-                const opacity = isSelected ? 1.0 : hasFocus ? 0.2 : 0.9;
+                const opacity = isSelected ? 1.0 : hasFocus ? 0.2 : 0.92;
 
-                const supPts = circuit.feeder_supply_points;
-                const retPts = circuit.feeder_return_points;
+                const roomPos = roomPositions[room.id] || { x: 0, y: 0 };
+                let supPts = circuit.feeder_supply_points;
+                let retPts = circuit.feeder_return_points;
+
+                if (!supPts || supPts.length === 0 || !retPts || retPts.length === 0) {
+                  const pts = circuit.path_points || [[0.5, 0.5]];
+                  const ent: [number, number] = [pts[0][0], pts[0][1]];
+                  const ext: [number, number] = pts.length > 1 ? [pts[pts.length - 1][0], pts[pts.length - 1][1]] : ent;
+                  const fallback = computeClientFeederRoute(
+                    manifoldPos,
+                    room,
+                    roomPos,
+                    circuit.manifold_port_index || 1,
+                    ent,
+                    ext,
+                    corridorLayout ? corridorLayout.y + 0.9 : 6.9
+                  );
+                  supPts = fallback.sup;
+                  retPts = fallback.ret;
+                }
 
                 if (!supPts || !retPts) return null;
 
@@ -754,7 +926,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                       d={supPathStr}
                       fill="none"
                       stroke="#EF4444"
-                      strokeWidth={isSelected ? '2.4' : isHovered ? '1.8' : '1.15'}
+                      strokeWidth={isSelected ? '2.4' : isHovered ? '1.8' : '1.2'}
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       filter={isSelected ? 'url(#route-glow-light)' : undefined}
@@ -765,11 +937,21 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                       d={retPathStr}
                       fill="none"
                       stroke="#2563EB"
-                      strokeWidth={isSelected ? '2.4' : isHovered ? '1.8' : '1.15'}
+                      strokeWidth={isSelected ? '2.4' : isHovered ? '1.8' : '1.2'}
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       filter={isSelected ? 'url(#route-glow-light)' : undefined}
                     />
+
+                    {/* Port tag badge on corridor feeder */}
+                    {supPts.length >= 3 && (
+                      <g transform={`translate(${supPts[1][0] * pxPerMeter}, ${supPts[1][1] * pxPerMeter - 5})`}>
+                        <rect x="-8" y="-6" width="16" height="10" rx="2" fill="#FFFFFF" stroke="#EF4444" strokeWidth="0.8" />
+                        <text x="0" y="1" textAnchor="middle" fill="#EF4444" fontSize="6" fontWeight="bold">
+                          P#{circuit.manifold_port_index || 1}
+                        </text>
+                      </g>
+                    )}
 
                     {/* Protective corrugated sleeve marker at entry */}
                     {supPts.length >= 2 && (
@@ -1022,6 +1204,19 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                           <text x={dx + dw / 2} y={dy - 4} fill="#64748B" fontSize="6.5" fontStyle="italic" textAnchor="middle">
                             Дв-{(doorIdx + 1)}
                           </text>
+
+                          {/* Corrugated Protective Sleeve (Himoya g'ilofi Ø20 / Gofra) */}
+                          {wallIdx === 2 && (
+                            <g transform={`translate(${dx + dw / 2 - 16}, ${dy - 4})`}>
+                              <rect x="0" y="0" width="32" height="10" rx="2" fill="#FEF3C7" stroke="#D97706" strokeWidth="1.2" />
+                              {Array.from({ length: 6 }).map((_, gIdx) => (
+                                <line key={gIdx} x1={5 + gIdx * 4.4} y1="1" x2={5 + gIdx * 4.4} y2="9" stroke="#D97706" strokeWidth="0.9" />
+                              ))}
+                              <text x="16" y="-3" fill="#B45309" fontSize="6.5" fontWeight="bold" textAnchor="middle">
+                                Gofra Ø20
+                              </text>
+                            </g>
+                          )}
                         </g>
                       );
                     })}

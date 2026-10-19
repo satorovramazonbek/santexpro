@@ -30,6 +30,77 @@ from engineering.hydraulics import (
 from catalog.models import RadiatorCatalogItem
 
 
+def compute_feeder_points_via_corridor(manifold, room, port_index, entry_pt, exit_pt, corridor_y=None):
+    """
+    Computes feeder supply (T11 red) and return (T12 blue) routes running
+    neatly along the corridor floor and entering the room strictly through its doorway.
+    Prevents intersecting walls or crossing loops.
+    """
+    rx = float(room.position_x or 0.0)
+    ry = float(room.position_y or 0.0)
+    rw = float(room.width or 4.0)
+    rl = float(room.length or 5.0)
+
+    # 1. Locate the doorway connecting room to the corridor
+    door = room.doors.filter(wall_index=2).first() or room.doors.first()
+    if door:
+        if door.wall_index == 2 or door.wall_index == 0:
+            door_gx = round(rx + float(door.position_along_wall) + float(door.width or 0.9) / 2.0, 2)
+            door_gy = round(ry + (rl if door.wall_index == 2 else 0.0), 2)
+        else:
+            door_gx = round(rx + (rw if door.wall_index == 1 else 0.0), 2)
+            door_gy = round(ry + float(door.position_along_wall) + float(door.width or 0.9) / 2.0, 2)
+    else:
+        # Default doorway on bottom wall
+        door_gx = round(rx + rw / 2.0, 2)
+        door_gy = round(ry + rl, 2)
+
+    gx_in = round(rx + float(entry_pt[0]), 2)
+    gy_in = round(ry + float(entry_pt[1]), 2)
+    gx_out = round(rx + float(exit_pt[0]), 2)
+    gy_out = round(ry + float(exit_pt[1]), 2)
+
+    # 2. Corridor trunk lane
+    if corridor_y is None:
+        all_rooms = room.project.rooms.all()
+        max_bottom = max((float(r.position_y or 0.0) + float(r.length or 5.0) for r in all_rooms), default=6.0)
+        corridor_y = round(max_bottom + 0.8, 2)
+
+    trunk_lane_y = round(corridor_y + (port_index - 1) * 0.04, 2)
+    port_off_x = (port_index - 1) * 0.06
+    m_sup_x = round(float(manifold.position_x) + port_off_x, 2)
+    m_ret_x = round(float(manifold.position_x) + port_off_x + 0.03, 2)
+
+    # Supply feeder: Manifold port -> Corridor lane -> Door threshold -> Circuit start
+    feeder_sup = [
+        [m_sup_x, round(float(manifold.position_y), 2)],
+        [m_sup_x, trunk_lane_y],
+        [round(door_gx - 0.04, 2), trunk_lane_y],
+        [round(door_gx - 0.04, 2), door_gy],
+        [gx_in, round(door_gy - 0.15, 2)],
+        [gx_in, gy_in],
+    ]
+
+    # Return feeder: Circuit end -> Door threshold -> Corridor lane -> Manifold port
+    feeder_ret = [
+        [gx_out, gy_out],
+        [gx_out, round(door_gy - 0.15, 2)],
+        [round(door_gx + 0.04, 2), door_gy],
+        [round(door_gx + 0.04, 2), trunk_lane_y],
+        [m_ret_x, trunk_lane_y],
+        [m_ret_x, round(float(manifold.position_y), 2)],
+    ]
+
+    lead_in_len = round(
+        abs(m_sup_x - (door_gx - 0.04)) + abs(trunk_lane_y - float(manifold.position_y)) + abs(door_gy - trunk_lane_y) +
+        abs(gx_in - door_gx) + abs(gy_in - door_gy) + abs(gx_out - door_gx) + abs(gy_out - door_gy) +
+        abs(door_gy - trunk_lane_y) + abs(m_ret_x - (door_gx + 0.04)) + abs(trunk_lane_y - float(manifold.position_y)),
+        1
+    )
+
+    return feeder_sup, feeder_ret, lead_in_len
+
+
 class ProjectViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsProjectOwner]
 
@@ -134,6 +205,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         return Response(ManifoldSerializer(manifold).data)
 
+
+
     @action(detail=True, methods=['post'], url_path='update-circuits-routing')
     def update_circuits_routing(self, request, pk=None):
         project = self.get_object()
@@ -161,6 +234,16 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 circuit.save()
         else:
             all_circuits = UnderfloorHeatingCircuit.objects.filter(room__project=project).select_related('room')
+            all_rooms = project.rooms.all()
+            max_bottom = max((float(r.position_y or 0.0) + float(r.length or 5.0) for r in all_rooms), default=6.0)
+            corridor_y = round(max_bottom + 0.8, 2)
+
+            # Move manifold out of room into corridor if needed
+            if float(manifold.position_y) < max_bottom - 0.2:
+                manifold.position_x = 0.8
+                manifold.position_y = round(max_bottom + 0.2, 2)
+                manifold.save(update_fields=['position_x', 'position_y'])
+
             port_num = 1
             for circ in all_circuits:
                 if circ.is_locked:
@@ -169,30 +252,22 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 circ.manifold_port_index = port_num
                 port_num += 1
 
-                rx = circ.room.position_x
-                ry = circ.room.position_y
                 pts = circ.path_points or [[0.5, 0.5]]
                 ent = pts[0]
                 ext = pts[-1] if len(pts) > 1 else ent
-                gx_in, gy_in = round(rx + ent[0], 2), round(ry + ent[1], 2)
-                gx_out, gy_out = round(rx + ext[0], 2), round(ry + ext[1], 2)
 
-                port_off = (circ.manifold_port_index - 1) * 0.05
-                circ.feeder_supply_points = [
-                    [round(manifold.position_x + port_off, 2), round(manifold.position_y, 2)],
-                    [round(manifold.position_x + port_off, 2), round(gy_in, 2)],
-                    [gx_in, round(gy_in, 2)],
-                ]
-                circ.feeder_return_points = [
-                    [gx_out, round(gy_out, 2)],
-                    [round(manifold.position_x + port_off + 0.02, 2), round(gy_out, 2)],
-                    [round(manifold.position_x + port_off + 0.02, 2), round(manifold.position_y, 2)],
-                ]
-                feeder_len = (
-                    abs(manifold.position_x + port_off - gx_in) + abs(manifold.position_y - gy_in) +
-                    abs(gx_out - (manifold.position_x + port_off + 0.02)) + abs(gy_out - manifold.position_y)
+                sup_pts, ret_pts, lead_len = compute_feeder_points_via_corridor(
+                    manifold=manifold,
+                    room=circ.room,
+                    port_index=circ.manifold_port_index,
+                    entry_pt=ent,
+                    exit_pt=ext,
+                    corridor_y=corridor_y
                 )
-                circ.manifold_lead_in_m = round(feeder_len, 1)
+
+                circ.feeder_supply_points = sup_pts
+                circ.feeder_return_points = ret_pts
+                circ.manifold_lead_in_m = lead_len
                 circ.total_length_m = round(circ.floor_length_m + circ.manifold_lead_in_m, 1)
                 circ.save()
 
@@ -545,17 +620,13 @@ class RoomViewSet(viewsets.ModelViewSet):
                 global_exit_x = round(r_pos_x + exit_pt[0], 2)
                 global_exit_y = round(r_pos_y + exit_pt[1], 2)
 
-                port_offset = (assigned_port - 1) * 0.05
-                feeder_sup = [
-                    [round(m_pos_x + port_offset, 2), round(m_pos_y, 2)],
-                    [round(m_pos_x + port_offset, 2), round(global_entry_y, 2)],
-                    [global_entry_x, round(global_entry_y, 2)],
-                ]
-                feeder_ret = [
-                    [global_exit_x, round(global_exit_y, 2)],
-                    [round(m_pos_x + port_offset + 0.02, 2), round(global_exit_y, 2)],
-                    [round(m_pos_x + port_offset + 0.02, 2), round(m_pos_y, 2)],
-                ]
+                feeder_sup, feeder_ret, lead_in_len = compute_feeder_points_via_corridor(
+                    manifold=manifold,
+                    room=room,
+                    port_index=assigned_port,
+                    entry_pt=entry_pt,
+                    exit_pt=exit_pt
+                )
 
                 # Update manifold outlets if needed
                 if assigned_port > manifold.outlets_count:
