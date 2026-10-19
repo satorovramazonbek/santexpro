@@ -22,7 +22,12 @@ import {
   Activity,
   X,
   Building2,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Image as ImageIcon,
+  Upload,
+  Trash2,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 interface HouseMasterPlanCanvasProps {
@@ -180,6 +185,54 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
     showGrid: true,
   });
   const [showLayerMenu, setShowLayerMenu] = useState<boolean>(false);
+
+  // Arxitektura Chizmasi Podlojkasi (Background Blueprint Underlay)
+  const [backdropImage, setBackdropImage] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(`santexpro_backdrop_${project.id}`);
+    } catch {
+      return null;
+    }
+  });
+  const [backdropOpacity, setBackdropOpacity] = useState<number>(0.45);
+  const [backdropScale, setBackdropScale] = useState<number>(1.0);
+  const [showBackdrop, setShowBackdrop] = useState<boolean>(true);
+  const [showBackdropMenu, setShowBackdropMenu] = useState<boolean>(false);
+  const backdropFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleBackdropUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const url = ev.target?.result as string;
+      setBackdropImage(url);
+      setShowBackdrop(true);
+      try {
+        localStorage.setItem(`santexpro_backdrop_${project.id}`, url);
+      } catch (err) {
+        console.warn("Could not save to localStorage", err);
+      }
+      setNotification({
+        type: 'success',
+        text: "Arxitektura qavat chizmasi (podlojka) muvaffaqiyatli yuklandi!",
+      });
+      setTimeout(() => setNotification(null), 3500);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleClearBackdrop = () => {
+    setBackdropImage(null);
+    try {
+      localStorage.removeItem(`santexpro_backdrop_${project.id}`);
+    } catch {}
+    setNotification({
+      type: 'success',
+      text: "Arxitektura chizmasi olib tashlandi.",
+    });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   // Xonalar joylashuvi
   const [roomPositions, setRoomPositions] = useState<Record<number, { x: number; y: number }>>({});
@@ -656,6 +709,108 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
             )}
           </div>
 
+          {/* Architectural Blueprint Underlay Popover */}
+          <div className="relative">
+            <button
+              onClick={() => setShowBackdropMenu(!showBackdropMenu)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border shadow-xs transition-colors ${
+                backdropImage
+                  ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-300'
+                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+              }`}
+              title="Qavat arxitektura chizmasini (PNG/JPG) podlojka sifatida yuklash"
+            >
+              <ImageIcon className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Arxitektura reja {backdropImage ? '(Faol)' : ''}</span>
+            </button>
+
+            {showBackdropMenu && (
+              <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-slate-200 rounded-xl p-3.5 shadow-xl z-50 text-xs space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-indigo-600" />
+                    Arxitektura Podlojkasi
+                  </span>
+                  {backdropImage && (
+                    <button
+                      onClick={() => setShowBackdrop(!showBackdrop)}
+                      className="text-slate-500 hover:text-slate-800 text-[11px] flex items-center gap-1"
+                    >
+                      {showBackdrop ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      <span>{showBackdrop ? "Yashirish" : "Ko‘rsatish"}</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    ref={backdropFileInputRef}
+                    accept="image/*"
+                    onChange={handleBackdropUpload}
+                    className="hidden"
+                  />
+
+                  <button
+                    onClick={() => backdropFileInputRef.current?.click()}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs shadow-xs transition-colors"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{backdropImage ? "Boshqa chizma yuklash" : "Arxitektura chizmasi (PNG/JPG)"}</span>
+                  </button>
+
+                  {backdropImage && (
+                    <>
+                      <div className="space-y-1 pt-1">
+                        <div className="flex justify-between text-[11px] text-slate-600">
+                          <span>Shaffoflik (Opacity)</span>
+                          <b>{Math.round(backdropOpacity * 100)}%</b>
+                        </div>
+                        <input
+                          type="range"
+                          min="0.1"
+                          max="1.0"
+                          step="0.05"
+                          value={backdropOpacity}
+                          onChange={(e) => setBackdropOpacity(parseFloat(e.target.value))}
+                          className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] text-slate-600">
+                          <span>Masshtab (Scale)</span>
+                          <b>{Math.round(backdropScale * 100)}%</b>
+                        </div>
+                        <input
+                          type="range"
+                          min="0.4"
+                          max="2.5"
+                          step="0.05"
+                          value={backdropScale}
+                          onChange={(e) => setBackdropScale(parseFloat(e.target.value))}
+                          className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleClearBackdrop}
+                        className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-red-600 hover:bg-red-50 rounded-lg text-xs font-semibold border border-red-200 transition-colors mt-2"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Chizmani olib tashlash</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                <div className="text-[10px] text-slate-400 border-t border-slate-100 pt-2 leading-relaxed">
+                  💡 Arxitektor bergan qavat chizmasi yoki PDF fotosuratini yuklang, xonalarni chizma ustiga moslab joylashtiring va issiq polni loyihalang.
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Auto route button */}
           <button
             onClick={handleRecalculateRouting}
@@ -806,6 +961,19 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
           </defs>
 
           <g transform={`translate(${pan.x}, ${pan.y})`}>
+            {/* 0. Arxitektura chizmasi foni (Architectural Blueprint Underlay / Podlojka) */}
+            {showBackdrop && backdropImage && (
+              <g className="blueprint-underlay" opacity={backdropOpacity}>
+                <image
+                  href={backdropImage}
+                  x="0"
+                  y="0"
+                  width={buildingBounds.widthM * pxPerMeter * backdropScale}
+                  preserveAspectRatio="xMinYMin meet"
+                />
+              </g>
+            )}
+
             {/* 1. Architectural Shared Corridor Layer (Dahliz / Umumiy Yo‘lak) */}
             {corridorLayout && (
               <g className="corridor-layer">
