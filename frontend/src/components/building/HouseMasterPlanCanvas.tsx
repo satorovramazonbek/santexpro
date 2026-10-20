@@ -1698,23 +1698,23 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                           <rect
                             x="0"
                             y="0"
-                            width="78"
-                            height="20"
-                            rx="2"
+                            width="84"
+                            height="22"
+                            rx="3"
                             fill="#FFFFFF"
                             stroke={isCircSelected ? '#2563EB' : '#1D4ED8'}
                             strokeWidth={isCircSelected ? '1.8' : '1.1'}
                           />
                           {/* "uponor" blue bold label */}
-                          <text x="5" y="13" fill="#1D4ED8" fontSize="8" fontWeight="bold">
+                          <text x="5" y="14" fill="#1D4ED8" fontSize="8" fontWeight="bold">
                             uponor
                           </text>
-                          <line x1="38" y1="2" x2="38" y2="18" stroke="#93C5FD" strokeWidth="0.8" />
-                          <text x="43" y="9" fill="#1E3A8A" fontSize="7" fontWeight="bold">
-                            {circ.circuit_number}
+                          <line x1="37" y1="2" x2="37" y2="20" stroke="#93C5FD" strokeWidth="0.8" />
+                          <text x="41" y="9.5" fill="#1E3A8A" fontSize="7" fontWeight="bold">
+                            {circ.circuit_number} / {circ.total_length_m?.toFixed(0) || '80'}m
                           </text>
-                          <text x="43" y="16" fill="#2563EB" fontSize="6.5" fontWeight="bold">
-                            {circ.total_length_m?.toFixed(0) || '80'}m
+                          <text x="41" y="18" fill="#2563EB" fontSize="6.5" fontWeight="bold">
+                            s={circ.spacing_mm || 150} mm
                           </text>
                         </g>
                       );
@@ -2322,6 +2322,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                           <th className="px-3 py-2">Kontur</th>
                           <th className="px-3 py-2">Xona</th>
                           <th className="px-3 py-2">Kollektor</th>
+                          <th className="px-3 py-2">Qadam (s)</th>
                           <th className="px-3 py-2">Pol / Tranzit</th>
                           <th className="px-3 py-2">Jami Uzunlik</th>
                           <th className="px-3 py-2">Suv Sarfi</th>
@@ -2350,6 +2351,11 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                               <td className="px-3 py-2">
                                 <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-[10px] font-mono">
                                   {c.manifold_name} (P#{c.manifold_port})
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 font-mono">
+                                <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 font-bold text-[11px]">
+                                  s={c.spacing_mm || 150} mm
                                 </span>
                               </td>
                               <td className="px-3 py-2 font-mono text-slate-600">

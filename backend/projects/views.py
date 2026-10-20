@@ -333,6 +333,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 "room_name": circ.room.name,
                 "manifold_name": circ.manifold.name if circ.manifold else "Дв-2",
                 "manifold_port": circ.manifold_port_index,
+                "pipe_diameter_mm": circ.pipe_diameter_mm or 16,
+                "spacing_mm": circ.spacing_mm or 150,
                 "floor_length_m": rep.floor_length_m,
                 "feeder_length_m": rep.feeder_length_m,
                 "total_length_m": rep.total_length_m,
