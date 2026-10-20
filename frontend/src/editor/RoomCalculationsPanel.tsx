@@ -458,15 +458,17 @@ export const RoomCalculationsPanel: React.FC<RoomCalculationsPanelProps> = ({
             <div className="space-y-3 bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Truba qadami (mm)</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Truba qadami (quvurlar masofasi, mm)</label>
                   <select
                     value={ufSpacing}
                     onChange={(e) => setUfSpacing(Number(e.target.value))}
-                    className="w-full p-2 border border-slate-300 rounded-lg bg-white"
+                    className="w-full p-2 border border-slate-300 rounded-lg bg-white font-medium"
                   >
-                    <option value="100">100 mm (Zich - hammom/vitrina)</option>
-                    <option value="150">150 mm (Standart tavsiya)</option>
-                    <option value="200">200 mm (Tejamkor / Markaz)</option>
+                    <option value="100">100 mm (Zich - chekka zona / hammom)</option>
+                    <option value="150">150 mm (Standart tavsiya — EN 1264)</option>
+                    <option value="200">200 mm (Katta yashash xonalari)</option>
+                    <option value="250">250 mm (Dahliz / texnik xonalar)</option>
+                    <option value="300">300 mm (Maksimal chegara — kam faol zona)</option>
                   </select>
                 </div>
 

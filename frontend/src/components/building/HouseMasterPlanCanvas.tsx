@@ -27,7 +27,8 @@ import {
   Upload,
   Trash2,
   Eye,
-  EyeOff
+  EyeOff,
+  Ruler
 } from 'lucide-react';
 
 interface HouseMasterPlanCanvasProps {
@@ -1448,6 +1449,28 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                                 .join(' ')
                             : '';
 
+                          // Calculate bounding box of the circuit to place CAD dimension callout
+                          let cMinX = 0.2, cMaxX = r.width - 0.2, cMinY = 0.2, cMaxY = r.length - 0.2;
+                          if (circ.path_points && circ.path_points.length > 0) {
+                            let minX = 9999, maxX = -9999, minY = 9999, maxY = -9999;
+                            for (const pt of circ.path_points) {
+                              if (pt[0] < minX) minX = pt[0];
+                              if (pt[0] > maxX) maxX = pt[0];
+                              if (pt[1] < minY) minY = pt[1];
+                              if (pt[1] > maxY) maxY = pt[1];
+                            }
+                            if (minX < 9000) {
+                              cMinX = minX;
+                              cMaxX = maxX;
+                              cMinY = minY;
+                              cMaxY = maxY;
+                            }
+                          }
+                          const circSpacingM = (circ.spacing_mm || 150) / 1000.0;
+                          const dimX1 = (cMinX + 0.2) * pxPerMeter;
+                          const dimX2 = dimX1 + circSpacingM * pxPerMeter;
+                          const dimY = (cMaxY - 0.3) * pxPerMeter;
+
                           return (
                             <g
                               key={circ.id || circ.circuit_number}
@@ -1481,6 +1504,40 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                 />
+                              )}
+
+                              {/* CAD Pipe Spacing Dimension Indicator between two loops */}
+                              {layers.showDimensions && dimX2 < rWidthPx - 10 && dimY > 15 && dimY < rLengthPx - 10 && (
+                                <g className="pipe-spacing-dim" opacity={isCircSelected ? 1.0 : 0.85}>
+                                  {/* Left tick */}
+                                  <line x1={dimX1} y1={dimY - 3} x2={dimX1} y2={dimY + 3} stroke="#1E3A8A" strokeWidth="0.9" />
+                                  {/* Right tick */}
+                                  <line x1={dimX2} y1={dimY - 3} x2={dimX2} y2={dimY + 3} stroke="#1E3A8A" strokeWidth="0.9" />
+                                  {/* Dimension connecting line */}
+                                  <line x1={dimX1} y1={dimY} x2={dimX2} y2={dimY} stroke="#1E3A8A" strokeWidth="0.8" />
+                                  {/* Spacing label badge */}
+                                  <rect
+                                    x={(dimX1 + dimX2) / 2 - 16}
+                                    y={dimY - 12}
+                                    width="32"
+                                    height="10"
+                                    rx="2"
+                                    fill="#FFFFFF"
+                                    stroke="#93C5FD"
+                                    strokeWidth="0.6"
+                                  />
+                                  <text
+                                    x={(dimX1 + dimX2) / 2}
+                                    y={dimY - 4.5}
+                                    textAnchor="middle"
+                                    fill="#1E3A8A"
+                                    fontSize="6.5"
+                                    fontWeight="bold"
+                                    fontFamily="monospace"
+                                  >
+                                    s={circ.spacing_mm || 150}
+                                  </text>
+                                </g>
                               )}
                             </g>
                           );
@@ -1659,7 +1716,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                         {r.name}
                       </text>
                       <text x="0" y="11" textAnchor="middle" fill="#64748B" fontSize="8.5" fontFamily="monospace">
-                        {r.length}x{r.width}m • {r.area} m²
+                        {r.length}x{r.width}m • {r.area} m²{circuits.length > 0 ? ` • s=${circuits[0].spacing_mm || 150}mm` : ''}
                       </text>
                     </g>
                   )}
@@ -1972,11 +2029,19 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                         <p className="text-xs text-slate-600 mt-1">
                           Truba: <b>Ø{activeCircuitDetails.circuit.pipe_diameter_mm || 16} mm Uponor pePEX</b> •
                           Maydon: <b>{activeCircuitDetails.circuit.heated_area || activeCircuitDetails.room.area} m²</b> •
-                          Qadam: <b>{activeCircuitDetails.circuit.spacing_mm || 150} mm</b> •
                           Pol trubasi: <b>{activeCircuitDetails.circuit.floor_length_m?.toFixed(1) || 0} m</b> +
                           Magistral ulanish: <b>{activeCircuitDetails.circuit.manifold_lead_in_m?.toFixed(1) || 0} m</b> =
                           Jami: <b className="text-blue-700">{activeCircuitDetails.circuit.total_length_m?.toFixed(1) || 0} m</b>
                         </p>
+                        <div className="flex items-center gap-2 flex-wrap mt-2">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-900 border border-blue-200">
+                            <Ruler className="w-3.5 h-3.5 text-blue-700" />
+                            Quvur qadami (masofasi): <b>{activeCircuitDetails.circuit.spacing_mm || 150} mm</b>
+                          </span>
+                          <span className="px-2 py-0.5 rounded text-[11px] bg-slate-100 text-slate-700 border border-slate-200 font-medium">
+                            EN 1264 tavsiyasi: {(activeCircuitDetails.circuit.spacing_mm || 150) <= 150 ? 'Zich / Chekka zona' : 'Standart yashash zonasi'}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
