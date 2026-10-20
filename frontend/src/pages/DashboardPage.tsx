@@ -98,6 +98,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               Yangi loyiha yaratish
             </button>
             <button
+              onClick={() => onOpenProject(15)}
+              className="flex items-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md active:scale-95"
+            >
+              <Sparkles className="w-4 h-4 text-blue-800" />
+              Uponor Namunaviy Loyihasi (7 xona)
+            </button>
+            <button
               onClick={onOpenQuickCalc}
               className="flex items-center gap-2 bg-blue-800/60 hover:bg-blue-800 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition-all border border-white/20"
             >
@@ -179,6 +186,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     <h3 className="font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors line-clamp-1">
                       {proj.name}
                     </h3>
+                    {(proj.id === 15 || proj.total_rooms_count === 7) && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 shrink-0">
+                        <Sparkles className="w-3 h-3 text-amber-500" />
+                        Uponor Blueprint
+                      </span>
+                    )}
                   </div>
 
                   {proj.client_name && (

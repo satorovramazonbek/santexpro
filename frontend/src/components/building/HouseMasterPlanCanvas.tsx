@@ -42,7 +42,8 @@ function computeBifilarSpiral(
   yMin: number,
   xMax: number,
   yMax: number,
-  spacingM: number
+  spacingM: number,
+  connectionSide: 'right' | 'left' | 'top' | 'bottom' = 'right'
 ): { supply: [number, number][]; returnPts: [number, number][] } {
   const step = spacingM * 2.0;
   const supply: [number, number][] = [];
@@ -53,22 +54,42 @@ function computeBifilarSpiral(
   let right = xMax;
   let bottom = yMax;
 
-  while (right - left >= 2.5 * spacingM && bottom - top >= 2.5 * spacingM) {
-    supply.push([Number(left.toFixed(2)), Number(top.toFixed(2))]);
-    supply.push([Number(right.toFixed(2)), Number(top.toFixed(2))]);
-    supply.push([Number(right.toFixed(2)), Number(bottom.toFixed(2))]);
-    supply.push([Number((left + step).toFixed(2)), Number(bottom.toFixed(2))]);
-    supply.push([Number((left + step).toFixed(2)), Number((top + step).toFixed(2))]);
+  if (connectionSide === 'right') {
+    while (right - left >= 2.2 * spacingM && bottom - top >= 2.2 * spacingM) {
+      supply.push([Number(right.toFixed(2)), Number(top.toFixed(2))]);
+      supply.push([Number(left.toFixed(2)), Number(top.toFixed(2))]);
+      supply.push([Number(left.toFixed(2)), Number(bottom.toFixed(2))]);
+      supply.push([Number((right - step).toFixed(2)), Number(bottom.toFixed(2))]);
+      supply.push([Number((right - step).toFixed(2)), Number((top + step).toFixed(2))]);
 
-    returnPts.unshift([Number((left + spacingM).toFixed(2)), Number((top + spacingM).toFixed(2))]);
-    returnPts.unshift([Number((right - spacingM).toFixed(2)), Number((top + spacingM).toFixed(2))]);
-    returnPts.unshift([Number((right - spacingM).toFixed(2)), Number((bottom - spacingM).toFixed(2))]);
-    returnPts.unshift([Number((left + step + spacingM).toFixed(2)), Number((bottom - spacingM).toFixed(2))]);
+      returnPts.unshift([Number((right - spacingM).toFixed(2)), Number((top + spacingM).toFixed(2))]);
+      returnPts.unshift([Number((left + spacingM).toFixed(2)), Number((top + spacingM).toFixed(2))]);
+      returnPts.unshift([Number((left + spacingM).toFixed(2)), Number((bottom - spacingM).toFixed(2))]);
+      returnPts.unshift([Number((right - step - spacingM).toFixed(2)), Number((bottom - spacingM).toFixed(2))]);
 
-    left += step;
-    top += step;
-    right -= step;
-    bottom -= step;
+      left += step;
+      top += step;
+      right -= step;
+      bottom -= step;
+    }
+  } else {
+    while (right - left >= 2.2 * spacingM && bottom - top >= 2.2 * spacingM) {
+      supply.push([Number(left.toFixed(2)), Number(top.toFixed(2))]);
+      supply.push([Number(right.toFixed(2)), Number(top.toFixed(2))]);
+      supply.push([Number(right.toFixed(2)), Number(bottom.toFixed(2))]);
+      supply.push([Number((left + step).toFixed(2)), Number(bottom.toFixed(2))]);
+      supply.push([Number((left + step).toFixed(2)), Number((top + step).toFixed(2))]);
+
+      returnPts.unshift([Number((left + spacingM).toFixed(2)), Number((top + spacingM).toFixed(2))]);
+      returnPts.unshift([Number((right - spacingM).toFixed(2)), Number((top + spacingM).toFixed(2))]);
+      returnPts.unshift([Number((right - spacingM).toFixed(2)), Number((bottom - spacingM).toFixed(2))]);
+      returnPts.unshift([Number((left + step + spacingM).toFixed(2)), Number((bottom - spacingM).toFixed(2))]);
+
+      left += step;
+      top += step;
+      right -= step;
+      bottom -= step;
+    }
   }
 
   if (supply.length > 0 && returnPts.length > 0) {
@@ -100,9 +121,10 @@ function computeClientFeederRoute(
   const rw = room.width || 4.0;
   const rl = room.length || 5.0;
 
-  const door = room.doors?.find((d) => d.wall_index === 2) || room.doors?.[0];
-  let doorGx = rx + rw / 2.0;
-  let doorGy = ry + rl;
+  const door = room.doors?.find((d) => d.wall_index === 1 || d.wall_index === 2) || room.doors?.[0];
+  let doorGx = rx + rw;
+  let doorGy = ry + rl / 2.0;
+
   if (door) {
     if (door.wall_index === 2 || door.wall_index === 0) {
       doorGx = rx + (door.position_along_wall || 1.0) + (door.width || 0.9) / 2.0;
@@ -113,21 +135,55 @@ function computeClientFeederRoute(
     }
   }
 
-  const trunkY = corridorY + (portIndex - 1) * 0.04;
-  const portOffX = (portIndex - 1) * 0.06;
-  const mSupX = manifoldPos.x + portOffX;
-  const mRetX = manifoldPos.x + portOffX + 0.03;
+  const portOffY = (portIndex - 1) * 0.04;
+  const pairGap = 0.024;
+  const mSupX = manifoldPos.x;
+  const mSupY = manifoldPos.y + portOffY;
+  const mRetX = manifoldPos.x;
+  const mRetY = manifoldPos.y + portOffY + pairGap;
 
   const gxIn = rx + entryPt[0];
   const gyIn = ry + entryPt[1];
   const gxOut = rx + exitPt[0];
   const gyOut = ry + exitPt[1];
 
+  // Agar eshik yon devorda bo'lsa (wall_index 1 yoki 3, masalan Zal/Tambur koridorga qaragan)
+  if (door && (door.wall_index === 1 || door.wall_index === 3)) {
+    const chanX = doorGx + 0.35 + (portIndex - 1) * 0.035;
+    const innerChanX = doorGx - 0.20 - (portIndex - 1) * 0.035;
+
+    const sup: [number, number][] = [
+      [mSupX, mSupY],
+      [chanX - pairGap / 2, mSupY],
+      [chanX - pairGap / 2, doorGy - pairGap / 2],
+      [doorGx, doorGy - pairGap / 2],
+      [innerChanX - pairGap / 2, doorGy - pairGap / 2],
+      [innerChanX - pairGap / 2, gyIn],
+      [gxIn, gyIn],
+    ];
+
+    const ret: [number, number][] = [
+      [gxOut, gyOut],
+      [innerChanX + pairGap / 2, gyOut],
+      [innerChanX + pairGap / 2, doorGy + pairGap / 2],
+      [doorGx, doorGy + pairGap / 2],
+      [chanX + pairGap / 2, doorGy + pairGap / 2],
+      [chanX + pairGap / 2, mRetY],
+      [mRetX, mRetY],
+    ];
+
+    return { sup, ret };
+  }
+
+  // Odatiy gorizontal o'tish (pastki/yuqori eshik)
+  const trunkY = corridorY + (portIndex - 1) * 0.04;
+  const portOffX = (portIndex - 1) * 0.04;
+
   const sup: [number, number][] = [
-    [mSupX, manifoldPos.y],
-    [mSupX, trunkY],
-    [doorGx - 0.04, trunkY],
-    [doorGx - 0.04, doorGy],
+    [mSupX + portOffX, manifoldPos.y],
+    [mSupX + portOffX, trunkY],
+    [doorGx - pairGap / 2, trunkY],
+    [doorGx - pairGap / 2, doorGy],
     [gxIn, doorGy - 0.15],
     [gxIn, gyIn],
   ];
@@ -135,10 +191,10 @@ function computeClientFeederRoute(
   const ret: [number, number][] = [
     [gxOut, gyOut],
     [gxOut, doorGy - 0.15],
-    [doorGx + 0.04, doorGy],
-    [doorGx + 0.04, trunkY],
-    [mRetX, trunkY],
-    [mRetX, manifoldPos.y],
+    [doorGx + pairGap / 2, doorGy],
+    [doorGx + pairGap / 2, trunkY],
+    [mRetX + portOffX + pairGap, trunkY],
+    [mRetX + portOffX + pairGap, manifoldPos.y],
   ];
 
   return { sup, ret };
@@ -1160,8 +1216,10 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                   const pts = circuit.path_points || [[0.5, 0.5]];
                   const ent: [number, number] = [pts[0][0], pts[0][1]];
                   const ext: [number, number] = pts.length > 1 ? [pts[pts.length - 1][0], pts[pts.length - 1][1]] : ent;
+                  const cMan = project.manifolds?.find((m) => m.id === circuit.manifold) || primaryManifold;
+                  const cManPos = cMan ? { x: cMan.position_x, y: cMan.position_y } : manifoldPos;
                   const fallback = computeClientFeederRoute(
-                    manifoldPos,
+                    cManPos,
                     room,
                     roomPos,
                     circuit.manifold_port_index || 1,
@@ -1231,16 +1289,28 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                       </g>
                     )}
 
-                    {/* Protective corrugated sleeve marker at entry */}
-                    {supPts.length >= 2 && (
-                      <circle
-                        cx={supPts[supPts.length - 1][0] * pxPerMeter}
-                        cy={supPts[supPts.length - 1][1] * pxPerMeter}
-                        r="3.5"
-                        fill="#F59E0B"
-                        stroke="#0F172A"
-                        strokeWidth="1"
-                      />
+                    {/* Protective corrugated sleeve marker at entry doorway (Gofra Ø20) */}
+                    {supPts.length >= 4 && (
+                      <g transform={`translate(${supPts[3][0] * pxPerMeter}, ${supPts[3][1] * pxPerMeter})`}>
+                        <circle
+                          cx="0"
+                          cy="0"
+                          r="4"
+                          fill="#F59E0B"
+                          stroke="#0F172A"
+                          strokeWidth="1.2"
+                        />
+                        <text
+                          x="0"
+                          y="-6"
+                          textAnchor="middle"
+                          fill="#B45309"
+                          fontSize="6.5"
+                          fontWeight="bold"
+                        >
+                          Gofra Ø20
+                        </text>
+                      </g>
                     )}
                   </g>
                 );

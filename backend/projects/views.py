@@ -282,6 +282,21 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         return Response({'status': 'success', 'message': "Konturlar va kollektor magistral yo‘llari yangilandi."})
 
+    @action(detail=True, methods=['post'], url_path='seed-blueprint')
+    def seed_blueprint(self, request, pk=None):
+        """
+        Loyihaga professional Uponor namuna blueprint qavat chizmasini
+        (7 xona, 10 kontur, 2 kollektor, 90-gradusli toza ortogonal quvurlar) yuklaydi.
+        """
+        project = self.get_object()
+        from projects.management.commands.seed_blueprint_project import seed_project_with_blueprint
+        res = seed_project_with_blueprint(project)
+        return Response({
+            'status': 'success',
+            'message': f"Namunaviy Uponor qavat loyihasi muvaffaqiyatli yuklandi ({res['circuits_count']} ta kontur, {res['rooms_count']} ta xona).",
+            'data': res
+        })
+
     @action(detail=False, methods=['get'])
     def dashboard_stats(self, request):
         user = self.request.user

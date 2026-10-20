@@ -24,7 +24,8 @@ import {
   Sliders,
   CheckCircle2,
   AlertTriangle,
-  Zap
+  Zap,
+  Sparkles
 } from 'lucide-react';
 
 interface ProjectDetailPageProps {
@@ -168,6 +169,19 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
       alert("PDF yuklab olishda xatolik: " + err.message);
     } finally {
       setDownloadingPdf(false);
+    }
+  };
+
+  const handleSeedBlueprint = async () => {
+    if (!confirm("Ushbu loyihaga professional Uponor namunaviy qavat chizmasini (7 xona, 10 kontur, 2 kollektor) yuklamoqchimisiz?")) return;
+    try {
+      setLoading(true);
+      await api.seedBlueprint(projectId);
+      await loadProject();
+    } catch (err: any) {
+      alert("Namunaviy chizmani yuklashda xatolik: " + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -321,6 +335,15 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
             </button>
 
             <button
+              onClick={handleSeedBlueprint}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 rounded-xl border border-emerald-200 transition-colors"
+              title="Uponor namuna blueprint chizmasini (7 xona, 10 kontur, 2 kollektor) ushbu loyihaga yuklash"
+            >
+              <Sparkles className="w-4 h-4 text-emerald-600" />
+              Namunaviy chizma
+            </button>
+
+            <button
               onClick={() => setIsEditProjectOpen(true)}
               className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl border border-slate-200"
               title="Loyiha sozlamalari"
@@ -435,14 +458,23 @@ export const ProjectDetailPage: React.FC<ProjectDetailPageProps> = ({
               <Flame className="w-10 h-10 text-slate-300 mx-auto mb-3" />
               <h3 className="text-sm font-bold text-slate-800">Ushbu loyihada hali xonalar yo‘q</h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">
-                Umumiy uy chizmasini shakllantirish uchun birinchi xonani qo‘shing.
+                Umumiy uy chizmasini shakllantirish uchun birinchi xonani qo‘shing yoki tayyor professional Uponor namunasini yuklang.
               </p>
-              <button
-                onClick={() => setIsAddRoomOpen(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs"
-              >
-                Birinchi xonani qo‘shish
-              </button>
+              <div className="flex items-center justify-center gap-3 flex-wrap">
+                <button
+                  onClick={() => setIsAddRoomOpen(true)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs"
+                >
+                  Birinchi xonani qo‘shish
+                </button>
+                <button
+                  onClick={handleSeedBlueprint}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors"
+                >
+                  <Sparkles className="w-4 h-4 text-emerald-200" />
+                  Namunaviy Uponor chizmasini yuklash
+                </button>
+              </div>
             </div>
           )}
         </div>

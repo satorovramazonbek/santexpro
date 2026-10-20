@@ -1,8 +1,9 @@
 """
-SantexPro — Deterministik Quvur Marshrutlash Dvigateli (A* Routing Engine).
-Hech qanday AI/LLM ishlatilmaydi: 100% deterministik, matematik aniq algoritmlar.
-Devorlar, ichki eshiklar, koridorlar va kollektor chiqishlarini hisobga oladi.
-Bosh kirish eshigi oldidan o'tishni qat'iy cheklaydi (yuqori jarima).
+SantexPro — Professional Deterministik Quvur va Kontur Marshrutlash Dvigateli (CAD Routing Engine).
+Hech qanday AI/LLM API chaqirilmaydi: 100% deterministik, matematik aniq muhandislik algoritmlari.
+Xona chegaralaridan chiqib ketishni (overflow), diagonal kesib o'tishlarni va xonalararo
+tartibsiz quvurlarni bartaraf etadi. Barcha trubalar devorlar bo'ylab, 90-gradusli ortogonal
+CAD uslubida, koridor va eshik o'rni orqali gofrali gilza (Gofra Ø20) bilan yotqiziladi.
 """
 
 import math
@@ -30,7 +31,6 @@ class DeterministicPipeRouter:
         self.cols = int(math.ceil(bounds_x / cell_size_m)) + 1
         self.rows = int(math.ceil(bounds_y / cell_size_m)) + 1
         
-        # Grid inicializatsiyasi (Standart: OPEN)
         self.grid = [[GridCell.OPEN for _ in range(self.cols)] for _ in range(self.rows)]
         self.cost_map = [[get_standard_param("routing_cost_open_floor") for _ in range(self.cols)] for _ in range(self.rows)]
 
@@ -43,7 +43,6 @@ class DeterministicPipeRouter:
         return round(c * self.cell_size, 3), round(r * self.cell_size, 3)
 
     def mark_corridor_zone(self, x_min: float, y_min: float, x_max: float, y_max: float):
-        """Koridor zonasini belgilaydi (marshrutlash narxi 0.5 - afzal ko'riladi)."""
         c_min, r_min = self.to_cell(x_min, y_min)
         c_max, r_max = self.to_cell(x_max, y_max)
         weight = get_standard_param("routing_cost_corridor_preference")
@@ -54,7 +53,6 @@ class DeterministicPipeRouter:
                 self.cost_map[r][c] = weight
 
     def mark_wall(self, x1: float, y1: float, x2: float, y2: float, thickness_m: float = 0.2):
-        """Devorni to'siq sifatida belgilaydi (cheksiz narx)."""
         dist = math.hypot(x2 - x1, y2 - y1)
         if dist < 1e-4:
             return
@@ -75,11 +73,6 @@ class DeterministicPipeRouter:
                         self.cost_map[nr][nc] = wall_cost
 
     def open_doorway(self, x_center: float, y_center: float, width_m: float = 0.9, is_interior: bool = True):
-        """
-        Eshik o'rnini ochadi.
-        Ichki eshik: past narx (1.2) - quvur bemalol o'tadi.
-        Bosh kirish eshigi (tashqi): yuqori jarima (50.0) - faqat ilojsiz bo'lsagina o'tishi mumkin.
-        """
         half_w = width_m / 2.0
         c_min, r_min = self.to_cell(x_center - half_w, y_center - half_w)
         c_max, r_max = self.to_cell(x_center + half_w, y_center + half_w)
@@ -94,26 +87,19 @@ class DeterministicPipeRouter:
                     self.cost_map[r][c] = cost
 
     def find_path(self, start_pos: Tuple[float, float], end_pos: Tuple[float, float]) -> List[Tuple[float, float]]:
-        """
-        A* algoritmi bilan optimal va deterministik yo'lni topadi.
-        """
         start_cell = self.to_cell(start_pos[0], start_pos[1])
         end_cell = self.to_cell(end_pos[0], end_pos[1])
 
         if start_cell == end_cell:
             return [start_pos, end_pos]
 
-        # Priority queue: (f_score, h_score, cell, path)
         open_set = []
         h_start = math.hypot(end_cell[0] - start_cell[0], end_cell[1] - start_cell[1])
         heapq.heappush(open_set, (h_start, h_start, start_cell, [start_cell]))
 
         g_score = {start_cell: 0.0}
         visited = set()
-
-        # 4-yo'nalishli (ortogonal) harakat: x va y bo'ylab
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-
         best_path_cells = None
 
         while open_set:
@@ -135,7 +121,7 @@ class DeterministicPipeRouter:
                     continue
 
                 cell_cost = self.cost_map[nr][nc]
-                if cell_cost >= 90000.0:  # Devor to'siq
+                if cell_cost >= 90000.0:
                     continue
 
                 step_cost = self.cell_size * cell_cost
@@ -148,21 +134,16 @@ class DeterministicPipeRouter:
                     heapq.heappush(open_set, (f, h, neighbor, path + [neighbor]))
 
         if not best_path_cells:
-            # To'siqdan aylanib o'tolmasa, to'g'ri chiziqli zaxira (fallback)
             return [start_pos, end_pos]
 
-        # Koordinatalarga o'tkazish va poliline'ni tekislash (simplify orthogonal segments)
         coords = [self.to_coords(c, r) for c, r in best_path_cells]
         simplified = self.simplify_orthogonal(coords)
-        
-        # Boshlang'ich va oxirgi nuqtalarni aniq o'rnatish
         if simplified:
             simplified[0] = (round(start_pos[0], 3), round(start_pos[1], 3))
             simplified[-1] = (round(end_pos[0], 3), round(end_pos[1], 3))
         return simplified
 
     def simplify_orthogonal(self, points: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
-        """Bir xil yo'nalishdagi oraliq nuqtalarni birlashtirib, tekis 90-gradusli CAD segmentlarini hosil qiladi."""
         if len(points) <= 2:
             return points
 
@@ -172,7 +153,6 @@ class DeterministicPipeRouter:
             curr = points[i]
             nxt = points[i + 1]
 
-            # Agar prev->curr va curr->nxt yo'nalishi bir xil bo'lsa (kollinear), curr tashlab ketiladi
             is_collinear_x = abs(prev[0] - curr[0]) < 1e-4 and abs(curr[0] - nxt[0]) < 1e-4
             is_collinear_y = abs(prev[1] - curr[1]) < 1e-4 and abs(curr[1] - nxt[1]) < 1e-4
 
@@ -191,10 +171,6 @@ def route_circuit_feeder_pair(
     room_exit_pos: Tuple[float, float],
     port_spacing_m: float = 0.05
 ) -> Dict[str, Any]:
-    """
-    Kollektorning aniq chiqishidan xonadagi konturgacha bo'lgan qizil (T11) va ko'k (T12)
-    uzatish va qaytish yo'llarini parallel holda marshrutlaydi.
-    """
     offset_x = (port_index - 1) * port_spacing_m
     supply_start = (manifold_pos[0] + offset_x, manifold_pos[1])
     return_start = (manifold_pos[0] + offset_x + 0.025, manifold_pos[1])
@@ -213,8 +189,215 @@ def route_circuit_feeder_pair(
 
     return {
         "port_index": port_index,
-        "supply_feeder": supply_path,
-        "return_feeder": return_path,
+        "supply_feeder": [[round(p[0], 3), round(p[1], 3)] for p in supply_path],
+        "return_feeder": [[round(p[0], 3), round(p[1], 3)] for p in return_path],
+        "supply_length_m": sup_len,
+        "return_length_m": ret_len,
+        "feeder_total_m": round(sup_len + ret_len, 2),
+    }
+
+
+def generate_orthogonal_bifilar_coil(
+    x_min: float,
+    y_min: float,
+    x_max: float,
+    y_max: float,
+    spacing_m: float = 0.15,
+    connection_side: str = 'right'
+) -> Tuple[List[List[float]], List[List[float]], List[List[float]], float]:
+    """
+    Xona chegarasidan chiqmaydigan, toza bifilar (chig'anoq / spiral) issiq pol konturini yaratadi.
+    connection_side: 'right' | 'left' | 'top' | 'bottom' — kollektor/koridorga qaragan tomon.
+    Uzatish (T11) va qaytish (T12) uchlari aynan shu tomondan chiqadi.
+    """
+    step = spacing_m * 2.0
+    supply: List[List[float]] = []
+    return_pts: List[List[float]] = []
+
+    l = round(x_min, 3)
+    t = round(y_min, 3)
+    r = round(x_max, 3)
+    b = round(y_max, 3)
+
+    if connection_side == 'right':
+        while (r - l) >= 2.2 * spacing_m and (b - t) >= 2.2 * spacing_m:
+            supply.append([round(r, 3), round(t, 3)])
+            supply.append([round(l, 3), round(t, 3)])
+            supply.append([round(l, 3), round(b, 3)])
+            supply.append([round(r - step, 3), round(b, 3)])
+            supply.append([round(r - step, 3), round(t + step, 3)])
+
+            return_pts.insert(0, [round(r - spacing_m, 3), round(t + spacing_m, 3)])
+            return_pts.insert(0, [round(l + spacing_m, 3), round(t + spacing_m, 3)])
+            return_pts.insert(0, [round(l + spacing_m, 3), round(b - spacing_m, 3)])
+            return_pts.insert(0, [round(r - step - spacing_m, 3), round(b - spacing_m, 3)])
+
+            l += step
+            t += step
+            r -= step
+            b -= step
+
+    elif connection_side == 'left':
+        while (r - l) >= 2.2 * spacing_m and (b - t) >= 2.2 * spacing_m:
+            supply.append([round(l, 3), round(t, 3)])
+            supply.append([round(r, 3), round(t, 3)])
+            supply.append([round(r, 3), round(b, 3)])
+            supply.append([round(l + step, 3), round(b, 3)])
+            supply.append([round(l + step, 3), round(t + step, 3)])
+
+            return_pts.insert(0, [round(l + spacing_m, 3), round(t + spacing_m, 3)])
+            return_pts.insert(0, [round(r - spacing_m, 3), round(t + spacing_m, 3)])
+            return_pts.insert(0, [round(r - spacing_m, 3), round(b - spacing_m, 3)])
+            return_pts.insert(0, [round(l + step + spacing_m, 3), round(b - spacing_m, 3)])
+
+            l += step
+            t += step
+            r -= step
+            b -= step
+
+    elif connection_side == 'bottom':
+        while (r - l) >= 2.2 * spacing_m and (b - t) >= 2.2 * spacing_m:
+            supply.append([round(l, 3), round(b, 3)])
+            supply.append([round(l, 3), round(t, 3)])
+            supply.append([round(r, 3), round(t, 3)])
+            supply.append([round(r, 3), round(b - step, 3)])
+            supply.append([round(l + step, 3), round(b - step, 3)])
+
+            return_pts.insert(0, [round(l + spacing_m, 3), round(b - spacing_m, 3)])
+            return_pts.insert(0, [round(l + spacing_m, 3), round(t + spacing_m, 3)])
+            return_pts.insert(0, [round(r - spacing_m, 3), round(t + spacing_m, 3)])
+            return_pts.insert(0, [round(r - spacing_m, 3), round(b - step - spacing_m, 3)])
+
+            l += step
+            t += step
+            r -= step
+            b -= step
+    else:  # top
+        while (r - l) >= 2.2 * spacing_m and (b - t) >= 2.2 * spacing_m:
+            supply.append([round(l, 3), round(t, 3)])
+            supply.append([round(l, 3), round(b, 3)])
+            supply.append([round(r, 3), round(b, 3)])
+            supply.append([round(r, 3), round(t + step, 3)])
+            supply.append([round(l + step, 3), round(t + step, 3)])
+
+            return_pts.insert(0, [round(l + spacing_m, 3), round(t + spacing_m, 3)])
+            return_pts.insert(0, [round(l + spacing_m, 3), round(b - spacing_m, 3)])
+            return_pts.insert(0, [round(r - spacing_m, 3), round(b - spacing_m, 3)])
+            return_pts.insert(0, [round(r - spacing_m, 3), round(t + step + spacing_m, 3)])
+
+            l += step
+            t += step
+            r -= step
+            b -= step
+
+    if supply and return_pts:
+        mid_pt = [
+            round((supply[-1][0] + return_pts[0][0]) / 2.0, 3),
+            round((supply[-1][1] + return_pts[0][1]) / 2.0, 3)
+        ]
+        supply.append(mid_pt)
+        return_pts.insert(0, mid_pt)
+
+    full_path = supply + return_pts
+
+    total_len = 0.0
+    for i in range(len(full_path) - 1):
+        total_len += math.hypot(full_path[i+1][0] - full_path[i][0], full_path[i+1][1] - full_path[i][1])
+
+    return supply, return_pts, full_path, round(total_len, 2)
+
+
+def create_clean_cad_feeder_route(
+    manifold_pos: Tuple[float, float],
+    port_index: int,
+    entry_global: Tuple[float, float],
+    exit_global: Tuple[float, float],
+    corridor_x: float,
+    corridor_y_range: Tuple[float, float],
+    doorway_pos: Optional[Tuple[float, float]] = None,
+    wall_corridor_channel_x: Optional[float] = None,
+    inner_wall_x: Optional[float] = None
+) -> Dict[str, Any]:
+    """
+    To'liq 90-gradusli ortogonal, devor va koridor yo'lagi bo'ylab tartibli o'tuvchi magistral trassa.
+    Qizil (T11 uzatish) va ko'k (T12 qaytish) quvurlar 25-30 mm parallel masofada, xonani
+    kesib o'tmasdan va devorlardan tashqariga chiqmasdan yotqiziladi.
+    Har bir port uchun alohida parallel yo'lak (lane offset) ajratiladi.
+    """
+    port_spacing = 0.035  # 35 mm portlararo oraliq
+    pair_spacing = 0.024  # 24 mm ta'minot va qaytish quvurlari oraliq masofasi
+
+    port_offset_y = (port_index - 1) * 0.04
+    port_sup = (round(manifold_pos[0], 3), round(manifold_pos[1] + port_offset_y, 3))
+    port_ret = (round(manifold_pos[0], 3), round(manifold_pos[1] + port_offset_y + pair_spacing, 3))
+
+    base_chan_x = wall_corridor_channel_x if wall_corridor_channel_x is not None else corridor_x
+    # Koridordagi har bir portning o'z vertikal chizig'i
+    chan_sup_x = round(base_chan_x + (port_index - 1) * port_spacing - pair_spacing / 2.0, 3)
+    chan_ret_x = round(base_chan_x + (port_index - 1) * port_spacing + pair_spacing / 2.0, 3)
+
+    sup_path: List[Tuple[float, float]] = [port_sup]
+    ret_path: List[Tuple[float, float]] = [port_ret]
+
+    if doorway_pos:
+        dw_x, dw_y = doorway_pos
+        door_y_off = (port_index - 1) * 0.03
+
+        # 1. Kollektordan koridor bo'ylab eshikkacha
+        sup_path.append((chan_sup_x, port_sup[1]))
+        sup_path.append((chan_sup_x, round(dw_y + door_y_off - pair_spacing / 2.0, 3)))
+
+        ret_path.append((chan_ret_x, port_ret[1]))
+        ret_path.append((chan_ret_x, round(dw_y + door_y_off + pair_spacing / 2.0, 3)))
+
+        # 2. Eshik o'rni (Gofra Ø20) orqali xonaga o'tish
+        sup_path.append((round(dw_x, 3), round(dw_y + door_y_off - pair_spacing / 2.0, 3)))
+        ret_path.append((round(dw_x, 3), round(dw_y + door_y_off + pair_spacing / 2.0, 3)))
+
+        # 3. Xona ichidagi devor bo'yicha trassa (inner wall channel)
+        if inner_wall_x is not None:
+            in_w_sup = round(inner_wall_x - (port_index - 1) * port_spacing - pair_spacing / 2.0, 3)
+            in_w_ret = round(inner_wall_x - (port_index - 1) * port_spacing + pair_spacing / 2.0, 3)
+
+            sup_path.append((in_w_sup, round(dw_y + door_y_off - pair_spacing / 2.0, 3)))
+            ret_path.append((in_w_ret, round(dw_y + door_y_off + pair_spacing / 2.0, 3)))
+
+            if abs(entry_global[1] - dw_y) > 0.05:
+                sup_path.append((in_w_sup, round(entry_global[1], 3)))
+                ret_path.append((in_w_ret, round(exit_global[1], 3)))
+
+        else:
+            if abs(entry_global[1] - dw_y) > 0.05:
+                sup_path.append((round(dw_x - 0.15, 3), round(entry_global[1], 3)))
+                ret_path.append((round(dw_x - 0.15 + pair_spacing, 3), round(exit_global[1], 3)))
+
+        # 4. Kontur kirish va chiqish nuqtalariga to'g'ri burchak ostida ulanish
+        sup_path.append((round(entry_global[0], 3), round(entry_global[1], 3)))
+        ret_path.append((round(exit_global[0], 3), round(exit_global[1], 3)))
+
+    else:
+        # Eshiksiz to'g'ridan-to'g'ri kanal (masalan, koridorning o'zida yoki devor yo'lida)
+        sup_path.append((chan_sup_x, port_sup[1]))
+        sup_path.append((chan_sup_x, round(entry_global[1], 3)))
+        sup_path.append((round(entry_global[0], 3), round(entry_global[1], 3)))
+
+        ret_path.append((chan_ret_x, port_ret[1]))
+        ret_path.append((chan_ret_x, round(exit_global[1], 3)))
+        ret_path.append((round(exit_global[0], 3), round(exit_global[1], 3)))
+
+    def calc_len(pts: List[Tuple[float, float]]) -> float:
+        l = 0.0
+        for i in range(len(pts) - 1):
+            l += math.hypot(pts[i+1][0] - pts[i][0], pts[i+1][1] - pts[i][1])
+        return round(l, 2)
+
+    sup_len = calc_len(sup_path)
+    ret_len = calc_len(ret_path)
+
+    return {
+        "port_index": port_index,
+        "supply_feeder": [[round(p[0], 3), round(p[1], 3)] for p in sup_path],
+        "return_feeder": [[round(p[0], 3), round(p[1], 3)] for p in ret_path],
         "supply_length_m": sup_len,
         "return_length_m": ret_len,
         "feeder_total_m": round(sup_len + ret_len, 2),

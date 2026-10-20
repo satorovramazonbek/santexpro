@@ -165,6 +165,12 @@ class ApiClient {
     });
   }
 
+  async seedBlueprint(projectId: number): Promise<{ status: string; message: string; data: any }> {
+    return this.request<{ status: string; message: string; data: any }>(`/projects/projects/${projectId}/seed-blueprint/`, {
+      method: 'POST',
+    });
+  }
+
   async updateUnderfloorCircuit(circuitId: number, data: Partial<any>): Promise<any> {
     return this.request<any>(`/projects/underfloor-circuits/${circuitId}/`, {
       method: 'PATCH',
