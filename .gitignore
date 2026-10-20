@@ -47,4 +47,6 @@ dist-ssr/
 # Temporary inspection files
 backend/*.png
 backend/*.pdf
+backups/
+*.sql.gz
 

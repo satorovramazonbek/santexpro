@@ -210,6 +210,48 @@ class EngineeringCalculationsTestCase(unittest.TestCase):
         self.assertGreater(res.total_pressure_loss_kpa, 0)
         self.assertIsNotNone(res.recommended_pipe)
 
+    def test_standards_config(self):
+        from engineering.standards_config import get_standard_param, validate_circuit_length
+        spacings = get_standard_param("allowed_pipe_spacings_mm")
+        self.assertIn(150, spacings)
+        max_16 = get_standard_param("max_circuit_length_16mm")
+        self.assertEqual(max_16, 100.0)
+
+        # Validation test
+        v_ok = validate_circuit_length(85.0, 16.0)
+        self.assertTrue(v_ok["is_valid"])
+        self.assertEqual(v_ok["status"], "OK")
+
+        v_over = validate_circuit_length(115.0, 16.0)
+        self.assertFalse(v_over["is_valid"])
+        self.assertIn("Tekshirilishi kerak", v_over["status"])
+
+    def test_deterministic_pipe_router(self):
+        from engineering.router import DeterministicPipeRouter, route_circuit_feeder_pair
+        router = DeterministicPipeRouter(bounds_x=10.0, bounds_y=10.0, cell_size_m=0.2)
+        # Wall with doorway
+        router.mark_wall(x1=5.0, y1=0.0, x2=5.0, y2=10.0, thickness_m=0.2)
+        router.open_doorway(x_center=5.0, y_center=5.0, width_m=1.0, is_interior=True)
+
+        # Path from (2.0, 5.0) to (8.0, 5.0) should pass through the door
+        path = router.find_path((2.0, 5.0), (8.0, 5.0))
+        self.assertGreater(len(path), 1)
+        self.assertEqual(path[0], (2.0, 5.0))
+        self.assertEqual(path[-1], (8.0, 5.0))
+
+        # Check feeder pair routing
+        feeder = route_circuit_feeder_pair(
+            router=router,
+            manifold_pos=(2.0, 2.0),
+            port_index=1,
+            room_entry_pos=(8.0, 4.0),
+            room_exit_pos=(8.0, 6.0)
+        )
+        self.assertEqual(feeder["port_index"], 1)
+        self.assertGreater(feeder["supply_length_m"], 0.0)
+        self.assertGreater(feeder["return_length_m"], 0.0)
+        self.assertGreater(feeder["feeder_total_m"], 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

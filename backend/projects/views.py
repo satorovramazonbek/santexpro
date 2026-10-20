@@ -181,7 +181,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='manifold')
     def save_manifold(self, request, pk=None):
         project = self.get_object()
-        manifold = project.manifolds.first()
+        manifold_id = request.data.get('manifold_id') or request.data.get('id')
+        if manifold_id:
+            manifold = project.manifolds.filter(id=manifold_id).first()
+        else:
+            manifold = project.manifolds.first()
+
         if not manifold:
             manifold = Manifold.objects.create(project=project)
 

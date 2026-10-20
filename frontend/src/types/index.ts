@@ -37,6 +37,15 @@ export interface AdminSystemStats {
 }
 
 
+export interface Floor {
+  id: number;
+  project: number;
+  floor_number: number;
+  name: string;
+  height_m: number;
+  elevation_m: number;
+}
+
 export interface Project {
   id: number;
   name: string;
@@ -52,6 +61,7 @@ export interface Project {
   created_at: string;
   updated_at: string;
   building?: Building;
+  floors?: Floor[];
   rooms?: Room[];
   manifolds?: Manifold[];
 }

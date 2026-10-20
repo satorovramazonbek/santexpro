@@ -247,6 +247,18 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
     y: primaryManifold?.position_y ?? 0.5,
   });
 
+  const [manifoldPositions, setManifoldPositions] = useState<Record<number, { x: number; y: number }>>({});
+
+  useEffect(() => {
+    if (project.manifolds && project.manifolds.length > 0) {
+      const posMap: Record<number, { x: number; y: number }> = {};
+      project.manifolds.forEach((m) => {
+        posMap[m.id] = { x: m.position_x, y: m.position_y };
+      });
+      setManifoldPositions(posMap);
+    }
+  }, [project.manifolds]);
+
   // Qavatlar
   const availableFloors = useMemo(() => {
     if (!project.rooms) return [1];
@@ -301,8 +313,20 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
     return project.rooms.filter((r) => selectedFloor === 'all' || r.floor_number === selectedFloor);
   }, [project.rooms, selectedFloor]);
 
-  // Shared Corridor / Hallway Layout
+  // Display manifolds
+  const manifoldsToDisplay = useMemo(() => {
+    if (!project.manifolds || project.manifolds.length === 0) return [];
+    return project.manifolds.filter((m) => selectedFloor === 'all' || (m.floor_number ?? 1) === selectedFloor);
+  }, [project.manifolds, selectedFloor]);
+
+  // Real corridor check
+  const hasRealCorridorRoom = useMemo(() => {
+    return roomsToDisplay.some((r) => r.name.toLowerCase().includes('dahliz') || r.name.toLowerCase().includes('koridor'));
+  }, [roomsToDisplay]);
+
+  // Shared Corridor / Hallway Layout (only if no real corridor room in project)
   const corridorLayout = useMemo(() => {
+    if (hasRealCorridorRoom) return null;
     if (roomsToDisplay.length === 0) return null;
     let minX = Infinity;
     let maxX = -Infinity;
@@ -329,7 +353,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
       width: Math.max(maxX - minX, 10.0),
       height: 1.8,
     };
-  }, [roomsToDisplay, roomPositions]);
+  }, [roomsToDisplay, roomPositions, hasRealCorridorRoom]);
 
   // All circuits flat list
   const allCircuits = useMemo(() => {
@@ -354,7 +378,7 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
 
   // Building bounds
   const buildingBounds = useMemo(() => {
-    let maxX = 12, maxY = 8;
+    let maxX = 22, maxY = 16;
     roomsToDisplay.forEach((r) => {
       const pos = roomPositions[r.id] || { x: 0, y: 0 };
       const right = pos.x + r.width;
@@ -362,14 +386,16 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
       if (right > maxX) maxX = right;
       if (bottom > maxY) maxY = bottom;
     });
-    if (manifoldPos.x + 2 > maxX) maxX = manifoldPos.x + 2;
-    if (manifoldPos.y + 2 > maxY) maxY = manifoldPos.y + 2;
+    Object.values(manifoldPositions).forEach((mPos) => {
+      if (mPos.x + 2 > maxX) maxX = mPos.x + 2;
+      if (mPos.y + 2 > maxY) maxY = mPos.y + 2;
+    });
 
     return {
-      widthM: Math.max(maxX + 2, 14),
-      heightM: Math.max(maxY + 2, 10),
+      widthM: Math.max(maxX + 2, 24),
+      heightM: Math.max(maxY + 2, 18),
     };
-  }, [roomsToDisplay, roomPositions, manifoldPos]);
+  }, [roomsToDisplay, roomPositions, manifoldPositions]);
 
   const pxPerMeter = 44 * zoom;
 
@@ -426,10 +452,13 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
       }));
 
       await api.saveProjectLayout(project.id, payload);
-      await api.updateManifold(project.id, {
-        position_x: manifoldPos.x,
-        position_y: manifoldPos.y,
-      });
+      for (const [manId, pos] of Object.entries(manifoldPositions)) {
+        await api.updateManifold(project.id, {
+          manifold_id: Number(manId),
+          position_x: pos.x,
+          position_y: pos.y,
+        });
+      }
 
       setNotification({
         type: 'success',
@@ -533,6 +562,16 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
           },
         }));
       } else if (draggingTarget.type === 'manifold') {
+        const targetId = draggingTarget.id ?? primaryManifold?.id;
+        if (targetId) {
+          setManifoldPositions((prev) => ({
+            ...prev,
+            [targetId]: {
+              x: Number(snappedX.toFixed(2)),
+              y: Number(snappedY.toFixed(2)),
+            },
+          }));
+        }
         setManifoldPos({
           x: Number(snappedX.toFixed(2)),
           y: Number(snappedY.toFixed(2)),
@@ -954,6 +993,11 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
               <line x1="0" y1="0" x2="0" y2="6" stroke="#94A3B8" strokeWidth="0.8" />
             </pattern>
 
+            {/* Arrowhead marker */}
+            <marker id="cad-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#0F172A" />
+            </marker>
+
             {/* Glowing route highlight */}
             <filter id="route-glow-light" x="-20%" y="-20%" width="140%" height="140%">
               <feDropShadow dx="0" dy="0" stdDeviation="2.5" floodColor="#2563EB" floodOpacity="0.5" />
@@ -971,6 +1015,72 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                   width={buildingBounds.widthM * pxPerMeter * backdropScale}
                   preserveAspectRatio="xMinYMin meet"
                 />
+              </g>
+            )}
+
+            {/* Architectural Axes & Cota Dimensions (Left & Top, matching Blueprint) */}
+            {layers.showDimensions && (
+              <g className="architectural-axes-layer" opacity="0.9">
+                {/* Left Axis 1 Bubble & Centerline */}
+                <g transform={`translate(${0.8 * pxPerMeter}, ${1.4 * pxPerMeter})`}>
+                  <circle cx="0" cy="0" r="14" fill="#FFFFFF" stroke="#0F172A" strokeWidth="1.4" />
+                  <text x="0" y="4.5" textAnchor="middle" fill="#0F172A" fontSize="11" fontWeight="bold">1</text>
+                  <line x1="14" y1="0" x2={1.0 * pxPerMeter} y2="0" stroke="#94A3B8" strokeWidth="1.0" strokeDasharray="6 3 1 3" />
+                </g>
+
+                {/* Left Axis 2 Bubble & Centerline */}
+                <g transform={`translate(${0.8 * pxPerMeter}, ${5.0 * pxPerMeter})`}>
+                  <circle cx="0" cy="0" r="14" fill="#FFFFFF" stroke="#0F172A" strokeWidth="1.4" />
+                  <text x="0" y="4.5" textAnchor="middle" fill="#0F172A" fontSize="11" fontWeight="bold">2</text>
+                  <line x1="14" y1="0" x2={1.0 * pxPerMeter} y2="0" stroke="#94A3B8" strokeWidth="1.0" strokeDasharray="6 3 1 3" />
+                </g>
+
+                {/* Top Axis 1A Bubble */}
+                <g transform={`translate(${18.0 * pxPerMeter}, ${0.6 * pxPerMeter})`}>
+                  <circle cx="0" cy="0" r="14" fill="#FFFFFF" stroke="#0F172A" strokeWidth="1.4" />
+                  <text x="0" y="4.5" textAnchor="middle" fill="#0F172A" fontSize="10" fontWeight="bold">1A</text>
+                  <line x1="0" y1="14" x2="0" y2={0.8 * pxPerMeter} stroke="#94A3B8" strokeWidth="1.0" strokeDasharray="6 3 1 3" />
+                </g>
+
+                {/* Dimension Line 3 500 (between Axis 1 and 2) */}
+                <line x1={0.45 * pxPerMeter} y1={1.4 * pxPerMeter} x2={0.45 * pxPerMeter} y2={5.0 * pxPerMeter} stroke="#0F172A" strokeWidth="1.2" />
+                <line x1={0.45 * pxPerMeter - 5} y1={1.4 * pxPerMeter - 5} x2={0.45 * pxPerMeter + 5} y2={1.4 * pxPerMeter + 5} stroke="#0F172A" strokeWidth="1.6" />
+                <line x1={0.45 * pxPerMeter - 5} y1={5.0 * pxPerMeter - 5} x2={0.45 * pxPerMeter + 5} y2={5.0 * pxPerMeter + 5} stroke="#0F172A" strokeWidth="1.6" />
+                <text
+                  x={0.45 * pxPerMeter - 8}
+                  y={3.2 * pxPerMeter}
+                  textAnchor="middle"
+                  fill="#0F172A"
+                  fontSize="10"
+                  fontWeight="bold"
+                  transform={`rotate(-90, ${0.45 * pxPerMeter - 8}, ${3.2 * pxPerMeter})`}
+                >
+                  3 500
+                </text>
+
+                {/* Dimension Line 12 700 (below Axis 2) */}
+                <line x1={0.45 * pxPerMeter} y1={5.0 * pxPerMeter} x2={0.45 * pxPerMeter} y2={15.4 * pxPerMeter} stroke="#0F172A" strokeWidth="1.2" />
+                <line x1={0.45 * pxPerMeter - 5} y1={15.4 * pxPerMeter - 5} x2={0.45 * pxPerMeter + 5} y2={15.4 * pxPerMeter + 5} stroke="#0F172A" strokeWidth="1.6" />
+                <text
+                  x={0.45 * pxPerMeter - 8}
+                  y={10.2 * pxPerMeter}
+                  textAnchor="middle"
+                  fill="#0F172A"
+                  fontSize="10"
+                  fontWeight="bold"
+                  transform={`rotate(-90, ${0.45 * pxPerMeter - 8}, ${10.2 * pxPerMeter})`}
+                >
+                  12 700
+                </text>
+
+                {/* Top Right Architectural Note: монтаж существующих перегородок */}
+                <g transform={`translate(${18.5 * pxPerMeter}, ${0.5 * pxPerMeter})`}>
+                  <rect x="-5" y="-5" width="165" height="34" rx="4" fill="#FFFFFF" stroke="#CBD5E1" strokeWidth="0.8" />
+                  <text x="0" y="10" fill="#0F172A" fontSize="9.5" fontWeight="bold">монтаж существующих</text>
+                  <text x="0" y="22" fill="#0F172A" fontSize="9.5" fontWeight="bold">перегородок</text>
+                  {/* Pointer Arrow */}
+                  <path d={`M 15 28 L 15 45 L 35 ${(1.4 - 0.5) * pxPerMeter}`} fill="none" stroke="#0F172A" strokeWidth="1.2" markerEnd="url(#cad-arrow)" />
+                </g>
               </g>
             )}
 
@@ -1161,28 +1271,65 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                   onClick={() => setSelectedRoomId(r.id)}
                   onMouseDown={(e) => handleItemMouseDown('room', r.id, pos, e)}
                 >
-                  {/* Clean Floor Slab */}
-                  <rect
-                    x="0"
-                    y="0"
-                    width={rWidthPx}
-                    height={rLengthPx}
-                    fill={isSelected ? '#EFF6FF' : isDragging ? '#FEF3C7' : '#FFFFFF'}
-                    stroke={isSelected ? '#2563EB' : isDragging ? '#F59E0B' : '#0F172A'}
-                    strokeWidth={isSelected ? '2.0' : '1.5'}
-                    strokeDasharray={isDragging ? '4 2' : undefined}
-                  />
+                  {r.name.toLowerCase().includes('zinapoya') ? (
+                    <g className="staircase-rendering">
+                      <rect
+                        x="0"
+                        y="0"
+                        width={rWidthPx}
+                        height={rLengthPx}
+                        fill={isSelected ? '#EFF6FF' : '#F8FAFC'}
+                        stroke={isSelected ? '#2563EB' : '#0F172A'}
+                        strokeWidth="1.8"
+                      />
+                      {Array.from({ length: 9 }).map((_, stepIdx) => {
+                        const stepY = (stepIdx + 1) * (rLengthPx / 10);
+                        return <line key={stepIdx} x1="0" y1={stepY} x2={rWidthPx} y2={stepY} stroke="#475569" strokeWidth="1.0" />;
+                      })}
+                      <line x1={rWidthPx / 2} y1="0" x2={rWidthPx / 2} y2={rLengthPx} stroke="#0F172A" strokeWidth="1.8" />
+                      <line x1={rWidthPx * 0.25} y1={rLengthPx * 0.85} x2={rWidthPx * 0.25} y2={rLengthPx * 0.18} stroke="#0F172A" strokeWidth="1.6" markerEnd="url(#cad-arrow)" />
+                      <rect x={rWidthPx / 2 - 32} y={rLengthPx / 2 - 9} width="64" height="18" rx="2" fill="#FFFFFF" stroke="#64748B" strokeWidth="0.8" />
+                      <text x={rWidthPx / 2} y={rLengthPx / 2 + 3} textAnchor="middle" fill="#0F172A" fontSize="8" fontWeight="bold">
+                        ZINAPOYA
+                      </text>
+                    </g>
+                  ) : (
+                    <>
+                      {/* Clean Floor Slab */}
+                      <rect
+                        x="0"
+                        y="0"
+                        width={rWidthPx}
+                        height={rLengthPx}
+                        fill={isSelected ? '#EFF6FF' : isDragging ? '#FEF3C7' : '#FFFFFF'}
+                        stroke={isSelected ? '#2563EB' : isDragging ? '#F59E0B' : '#0F172A'}
+                        strokeWidth={isSelected ? '2.0' : '1.5'}
+                        strokeDasharray={isDragging ? '4 2' : undefined}
+                      />
 
-                  {/* Architectural Double Walls with Clean Hatching */}
-                  <rect
-                    x="4"
-                    y="4"
-                    width={Math.max(0, rWidthPx - 8)}
-                    height={Math.max(0, rLengthPx - 8)}
-                    fill="none"
-                    stroke="#475569"
-                    strokeWidth="0.8"
-                  />
+                      {/* Architectural Double Walls with Clean Hatching */}
+                      <rect
+                        x="4"
+                        y="4"
+                        width={Math.max(0, rWidthPx - 8)}
+                        height={Math.max(0, rLengthPx - 8)}
+                        fill="none"
+                        stroke="#475569"
+                        strokeWidth="0.8"
+                      />
+
+                      {/* If Room 21 (Перегородка): Hatched Partition Wall zone on right */}
+                      {(r.name.includes('21') || r.name.toLowerCase().includes('перегородка')) && (
+                        <rect
+                          x={rWidthPx - 68}
+                          y="4"
+                          width="64"
+                          height={rLengthPx - 8}
+                          fill="url(#masterWallHatchLight)"
+                          stroke="#475569"
+                          strokeWidth="1.2"
+                        />
+                      )}
 
                   {/* Real Underfloor Heating Circuits (Uponor T11 Red / T12 Blue on White) */}
                   {layers.showTubes && showHeatingPiso && (
@@ -1508,99 +1655,107 @@ export const HouseMasterPlanCanvas: React.FC<HouseMasterPlanCanvasProps> = ({
                       </text>
                     </g>
                   )}
+                    </>
+                  )}
                 </g>
               );
             })}
 
-            {/* C. Manifold Cabinet (Uponor Vario S Cabinet on White Paper) */}
-            <g
-              transform={`translate(${manifoldPos.x * pxPerMeter}, ${manifoldPos.y * pxPerMeter})`}
-              className="pointer-events-auto cursor-pointer"
-              onClick={() => setActiveTab('manifold')}
-              onMouseDown={(e) => handleItemMouseDown('manifold', undefined, manifoldPos, e)}
-            >
-              {/* Cabinet Enclosure */}
-              <rect
-                x="-12"
-                y="-16"
-                width={Math.max(110, manifoldOutletsCount * 12 + 28)}
-                height="46"
-                fill="#FFFFFF"
-                stroke={isOverCapacity ? '#EF4444' : '#0284C7'}
-                strokeWidth="1.8"
-                filter="drop-shadow(0 2px 4px rgba(0,0,0,0.15))"
-              />
+            {/* C. All Manifolds Rendering (Uponor Cabinets & Riser Nodes, e.g. Дв-2 & T1-32) */}
+            {(manifoldsToDisplay.length > 0 ? manifoldsToDisplay : [primaryManifold]).filter(Boolean).map((man: any) => {
+              const mPos = manifoldPositions[man.id] || { x: man.position_x, y: man.position_y };
+              const isT1Riser = man.name?.includes('T1-32') || (man.pipe_diameter_mm && man.pipe_diameter_mm >= 30);
+              const isManDragging = draggingTarget?.type === 'manifold' && draggingTarget?.id === man.id;
 
-              {/* Cabinet title */}
-              <text x="0" y="-4" fill="#0284C7" fontSize="7.5" fontWeight="bold" letterSpacing="0.5">
-                KOLLEKTOR SHKAF (ШРВ-{manifoldOutletsCount})
-              </text>
-
-              {/* Top Red Supply Header (T11) */}
-              <line
-                x1="0"
-                y1="8"
-                x2={manifoldOutletsCount * 12 + 6}
-                y2="8"
-                stroke="#EF4444"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-              />
-              {/* Bottom Blue Return Header (T12) */}
-              <line
-                x1="0"
-                y1="18"
-                x2={manifoldOutletsCount * 12 + 6}
-                y2="18"
-                stroke="#2563EB"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-              />
-
-              {/* Numbered Port Outlets */}
-              {Array.from({ length: manifoldOutletsCount }).map((_, pIdx) => {
-                const portNum = pIdx + 1;
-                const portX = 6 + pIdx * 12;
-                const connectedCircuit = allCircuits.find((c) => c.circuit.manifold_port_index === portNum);
-                const isPortSelected = selectedCircuitId !== null && connectedCircuit?.circuit.id === selectedCircuitId;
-
+              if (isT1Riser) {
                 return (
                   <g
-                    key={pIdx}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (connectedCircuit) {
-                        setSelectedCircuitId(connectedCircuit.circuit.id || null);
-                        setSelectedRoomId(connectedCircuit.room.id);
-                      }
-                    }}
+                    key={man.id}
+                    transform={`translate(${mPos.x * pxPerMeter}, ${mPos.y * pxPerMeter})`}
+                    className="pointer-events-auto cursor-pointer"
+                    onClick={() => setActiveTab('manifold')}
+                    onMouseDown={(e) => handleItemMouseDown('manifold', man.id, mPos, e)}
                   >
-                    {/* Supply nipple */}
-                    <circle
-                      cx={portX}
-                      cy="8"
-                      r={isPortSelected ? '3.5' : '2.2'}
-                      fill={connectedCircuit ? '#EF4444' : '#CBD5E1'}
-                      stroke="#0F172A"
-                      strokeWidth={isPortSelected ? '1.2' : '0.6'}
-                    />
-                    {/* Return nipple */}
-                    <circle
-                      cx={portX + 2}
-                      cy="18"
-                      r={isPortSelected ? '3.5' : '2.2'}
-                      fill={connectedCircuit ? '#2563EB' : '#CBD5E1'}
-                      stroke="#0F172A"
-                      strokeWidth={isPortSelected ? '1.2' : '0.6'}
-                    />
-                    {/* Port number label */}
-                    <text x={portX} y="27" fill="#475569" fontSize="6.5" fontWeight="bold" textAnchor="middle">
-                      {portNum}
+                    {/* T1-32 Riser connection lines */}
+                    <path d="M 0 0 L 25 0 L 25 35 L 50 35" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round" />
+                    <path d="M 0 6 L 20 6 L 20 41 L 50 41" fill="none" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" />
+                    <rect x="-10" y="-18" width="55" height="18" rx="3" fill="#FEF2F2" stroke="#EF4444" strokeWidth="1.2" />
+                    <text x="17" y="-5" textAnchor="middle" fill="#DC2626" fontSize="10" fontWeight="bold">
+                      T1-32
                     </text>
+                    <circle cx="25" cy="0" r="3.5" fill="#EF4444" />
                   </g>
                 );
-              })}
-            </g>
+              }
+
+              const outlets = man.outlets_count || 8;
+              const cabW = Math.max(100, outlets * 12 + 28);
+
+              return (
+                <g
+                  key={man.id}
+                  transform={`translate(${mPos.x * pxPerMeter}, ${mPos.y * pxPerMeter})`}
+                  className="pointer-events-auto cursor-pointer"
+                  onClick={() => setActiveTab('manifold')}
+                  onMouseDown={(e) => handleItemMouseDown('manifold', man.id, mPos, e)}
+                >
+                  <rect
+                    x="-12"
+                    y="-16"
+                    width={cabW}
+                    height="46"
+                    fill="#FFFFFF"
+                    stroke={isOverCapacity ? '#EF4444' : isManDragging ? '#F59E0B' : '#0284C7'}
+                    strokeWidth="1.8"
+                    filter="drop-shadow(0 2px 4px rgba(0,0,0,0.15))"
+                  />
+                  <text x="0" y="-4" fill="#0284C7" fontSize="7.5" fontWeight="bold" letterSpacing="0.5">
+                    {man.name.toUpperCase()} (ШРВ-{outlets})
+                  </text>
+                  <line x1="0" y1="8" x2={outlets * 12 + 6} y2="8" stroke="#EF4444" strokeWidth="2.4" strokeLinecap="round" />
+                  <line x1="0" y1="18" x2={outlets * 12 + 6} y2="18" stroke="#2563EB" strokeWidth="2.4" strokeLinecap="round" />
+                  {Array.from({ length: outlets }).map((_, pIdx) => {
+                    const portNum = pIdx + 1;
+                    const portX = 6 + pIdx * 12;
+                    const connectedCircuit = allCircuits.find((c) => c.circuit.manifold_port_index === portNum && (c.circuit.manifold === man.id || !c.circuit.manifold));
+                    const isPortSelected = selectedCircuitId !== null && connectedCircuit?.circuit.id === selectedCircuitId;
+
+                    return (
+                      <g
+                        key={pIdx}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (connectedCircuit) {
+                            setSelectedCircuitId(connectedCircuit.circuit.id || null);
+                            setSelectedRoomId(connectedCircuit.room.id);
+                          }
+                        }}
+                      >
+                        <circle
+                          cx={portX}
+                          cy="8"
+                          r={isPortSelected ? '3.5' : '2.2'}
+                          fill={connectedCircuit ? '#EF4444' : '#CBD5E1'}
+                          stroke="#0F172A"
+                          strokeWidth={isPortSelected ? '1.2' : '0.6'}
+                        />
+                        <circle
+                          cx={portX + 2}
+                          cy="18"
+                          r={isPortSelected ? '3.5' : '2.2'}
+                          fill={connectedCircuit ? '#2563EB' : '#CBD5E1'}
+                          stroke="#0F172A"
+                          strokeWidth={isPortSelected ? '1.2' : '0.6'}
+                        />
+                        <text x={portX} y="27" fill="#475569" fontSize="6.5" fontWeight="bold" textAnchor="middle">
+                          {portNum}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </g>
+              );
+            })}
           </g>
         </svg>
 

@@ -1,9 +1,44 @@
 from rest_framework import serializers
 from .models import (
-    Project, Building, Room, Wall, Window, Door,
-    Manifold, Radiator, UnderfloorHeatingCircuit, CalculationResult
+    Project, Building, Floor, Room, Wall, Window, Door,
+    Manifold, Radiator, UnderfloorHeatingCircuit, CalculationResult,
+    PipeRoute, PipeSegment, PipeConnection, RoutingWaypoint
 )
 from catalog.serializers import RadiatorCatalogItemSerializer
+
+
+class FloorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Floor
+        fields = '__all__'
+
+
+class PipeSegmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PipeSegment
+        fields = '__all__'
+
+
+class PipeConnectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PipeConnection
+        fields = '__all__'
+
+
+class RoutingWaypointSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RoutingWaypoint
+        fields = '__all__'
+
+
+class PipeRouteSerializer(serializers.ModelSerializer):
+    segments = PipeSegmentSerializer(many=True, read_only=True)
+    connections = PipeConnectionSerializer(many=True, read_only=True)
+    waypoints = RoutingWaypointSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = PipeRoute
+        fields = '__all__'
 
 
 class WindowSerializer(serializers.ModelSerializer):
@@ -69,6 +104,7 @@ class RadiatorSerializer(serializers.ModelSerializer):
 
 class UnderfloorHeatingCircuitSerializer(serializers.ModelSerializer):
     pattern_display = serializers.CharField(source='get_pattern_display', read_only=True)
+    route = PipeRouteSerializer(read_only=True)
 
     class Meta:
         model = UnderfloorHeatingCircuit
@@ -148,6 +184,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
     building = BuildingSerializer(read_only=True)
+    floors = FloorSerializer(many=True, read_only=True)
     rooms = RoomSerializer(many=True, read_only=True)
     manifolds = ManifoldSerializer(many=True, read_only=True)
     total_rooms_count = serializers.IntegerField(read_only=True)

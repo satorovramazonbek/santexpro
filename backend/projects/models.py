@@ -78,6 +78,25 @@ class Building(models.Model):
         return f"{self.project.name} - Bino parametrlari"
 
 
+class Floor(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='floors', verbose_name="Loyiha")
+    floor_number = models.IntegerField(default=1, verbose_name="Qavat raqami")
+    name = models.CharField(max_length=100, default="1-qavat", verbose_name="Qavat nomi")
+    height_m = models.FloatField(default=3.0, verbose_name="Shift balandligi (m)")
+    elevation_m = models.FloatField(default=0.0, verbose_name="Nol sathidan balandligi (m)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Qavat"
+        verbose_name_plural = "Qavatlar"
+        ordering = ['floor_number']
+        unique_together = [['project', 'floor_number']]
+
+    def __str__(self):
+        return f"{self.project.name} - {self.name}"
+
+
 class Room(models.Model):
     HEATING_PREFERENCES = [
         ('combined', 'Aralash (Radiator + Issiq pol)'),
@@ -86,6 +105,7 @@ class Room(models.Model):
     ]
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='rooms', verbose_name="Loyiha")
+    floor = models.ForeignKey(Floor, on_delete=models.SET_NULL, null=True, blank=True, related_name='rooms', verbose_name="Bog'langan qavat")
     name = models.CharField(max_length=150, verbose_name="Xona nomi")
     floor_number = models.IntegerField(default=1, verbose_name="Qavati")
     position_x = models.FloatField(default=0.0, blank=True, verbose_name="X koordinata (m)")
@@ -139,6 +159,7 @@ class Wall(models.Model):
     ]
 
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='walls', verbose_name="Xona")
+    shared_with_room = models.ForeignKey(Room, on_delete=models.SET_NULL, null=True, blank=True, related_name='shared_walls', verbose_name="Umumiy qo‘shni xona")
     wall_index = models.PositiveSmallIntegerField(default=0, verbose_name="Devor indeksi (0-3)")
     orientation = models.CharField(max_length=2, choices=WALL_ORIENTATIONS, default='N', verbose_name="Yo‘nalishi")
     length = models.FloatField(verbose_name="Uzunligi (m)")
@@ -189,6 +210,7 @@ class Window(models.Model):
 
 class Door(models.Model):
     DOOR_TYPES = [
+        ('exterior_main', 'Bosh kirish eshigi (U=1.8)'),
         ('exterior_insulated', 'Tashqi metall/plastik izolyatsiyalangan eshik (U=1.8)'),
         ('exterior_wood', 'Tashqi yog‘och eshik (U=2.5)'),
         ('balcony_glass', 'Balkon plastik shisha eshigi (U=1.6)'),
@@ -201,7 +223,8 @@ class Door(models.Model):
     position_along_wall = models.FloatField(default=1.0, verbose_name="Devor bo‘ylab o‘rni (m)")
     width = models.FloatField(default=0.9, verbose_name="Kengligi (m)")
     height = models.FloatField(default=2.1, verbose_name="Balandligi (m)")
-    door_type = models.CharField(max_length=50, choices=DOOR_TYPES, default='exterior_insulated', verbose_name="Eshik turi")
+    door_type = models.CharField(max_length=50, choices=DOOR_TYPES, default='interior', verbose_name="Eshik turi")
+    opening_direction = models.CharField(max_length=30, default='inward_right', blank=True, verbose_name="Ochilish yo‘nalishi")
     u_value = models.FloatField(default=2.0, verbose_name="U koeffitsiyenti (Vt/m²·K)")
 
     @property
@@ -222,6 +245,7 @@ class Door(models.Model):
 
 class Manifold(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='manifolds', verbose_name="Loyiha")
+    floor = models.ForeignKey(Floor, on_delete=models.SET_NULL, null=True, blank=True, related_name='manifolds', verbose_name="Bog'langan qavat")
     room = models.ForeignKey(Room, on_delete=models.SET_NULL, null=True, blank=True, related_name='manifolds', verbose_name="O‘rnatilgan xona")
     name = models.CharField(max_length=100, default="Kollektor shkafi 1", verbose_name="Kollektor nomi")
     floor_number = models.IntegerField(default=1, verbose_name="Qavati")
@@ -301,6 +325,86 @@ class UnderfloorHeatingCircuit(models.Model):
         constraints = [
             models.CheckConstraint(condition=models.Q(total_length_m__gte=0), name='chk_circuit_length_gte_0'),
         ]
+
+
+class PipeRoute(models.Model):
+    circuit = models.OneToOneField(UnderfloorHeatingCircuit, on_delete=models.CASCADE, related_name='route', verbose_name="Kontur")
+    manifold = models.ForeignKey(Manifold, on_delete=models.SET_NULL, null=True, blank=True, related_name='pipe_routes', verbose_name="Kollektor")
+    supply_length_m = models.FloatField(default=0.0, verbose_name="Uzatish trubasi uzunligi (m)")
+    return_length_m = models.FloatField(default=0.0, verbose_name="Qaytish trubasi uzunligi (m)")
+    total_length_m = models.FloatField(default=0.0, verbose_name="Umumiy uzunlik (m)")
+    is_manual_override = models.BooleanField(default=False, verbose_name="Qo‘lda tahrirlangan")
+    routing_metadata = models.JSONField(default=dict, blank=True, verbose_name="Qo‘shimcha marshrut ma'lumotlari")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Quvur marshruti"
+        verbose_name_plural = "Quvur marshrutlari"
+
+    def __str__(self):
+        return f"{self.circuit.name} marshruti ({self.total_length_m} m)"
+
+
+class PipeSegment(models.Model):
+    SEGMENT_TYPES = [
+        ('coil_supply', 'Pol ichidagi uzatish (T11)'),
+        ('coil_return', 'Pol ichidagi qaytish (T12)'),
+        ('feeder_supply', 'Kollektordan uzatish magistrali'),
+        ('feeder_return', 'Kollektorga qaytish magistrali'),
+        ('conduit_sleeve', 'Gofrali himoya gilzasi (Gofra Ø20)'),
+    ]
+
+    route = models.ForeignKey(PipeRoute, on_delete=models.CASCADE, related_name='segments', verbose_name="Marshrut")
+    segment_type = models.CharField(max_length=30, choices=SEGMENT_TYPES, default='coil_supply', verbose_name="Segment turi")
+    start_x_mm = models.FloatField(verbose_name="Boshlanish X (mm)")
+    start_y_mm = models.FloatField(verbose_name="Boshlanish Y (mm)")
+    end_x_mm = models.FloatField(verbose_name="Tugash X (mm)")
+    end_y_mm = models.FloatField(verbose_name="Tugash Y (mm)")
+    diameter_mm = models.FloatField(default=16.0, verbose_name="Quvur tashqi diametri (mm)")
+    length_m = models.FloatField(default=0.0, verbose_name="Uzunligi (m)")
+    has_corrugation_sleeve = models.BooleanField(default=False, verbose_name="Himoya gofrasi bormi")
+    sequence_order = models.PositiveIntegerField(default=0, verbose_name="Tartib raqami")
+
+    class Meta:
+        verbose_name = "Quvur segmenti"
+        verbose_name_plural = "Quvur segmentlari"
+        ordering = ['sequence_order']
+
+
+class PipeConnection(models.Model):
+    CONNECTION_TYPES = [
+        ('manifold_supply_port', 'Kollektor uzatish chiqishi'),
+        ('manifold_return_port', 'Kollektor qaytish chiqishi'),
+        ('circuit_inlet', 'Kontur kirish nuqtasi'),
+        ('circuit_outlet', 'Kontur chiqish nuqtasi'),
+        ('doorway_pass', 'Eshik o‘rni orqali o‘tish'),
+        ('wall_penetration', 'Devor orqali o‘tish gilzasi'),
+    ]
+
+    route = models.ForeignKey(PipeRoute, on_delete=models.CASCADE, related_name='connections', verbose_name="Marshrut")
+    connection_type = models.CharField(max_length=40, choices=CONNECTION_TYPES, verbose_name="Ulanish turi")
+    position_x_mm = models.FloatField(verbose_name="X koordinata (mm)")
+    position_y_mm = models.FloatField(verbose_name="Y koordinata (mm)")
+    description = models.CharField(max_length=150, blank=True, verbose_name="Izoh / Markirovka")
+
+    class Meta:
+        verbose_name = "Quvur ulanish nuqtasi"
+        verbose_name_plural = "Quvur ulanish nuqtalari"
+
+
+class RoutingWaypoint(models.Model):
+    route = models.ForeignKey(PipeRoute, on_delete=models.CASCADE, related_name='waypoints', verbose_name="Marshrut")
+    x_mm = models.FloatField(verbose_name="X koordinata (mm)")
+    y_mm = models.FloatField(verbose_name="Y koordinata (mm)")
+    order = models.PositiveIntegerField(default=0, verbose_name="Tartib")
+    is_locked = models.BooleanField(default=False, verbose_name="Qulflangan nuqta")
+    point_type = models.CharField(max_length=20, default='feeder_supply', verbose_name="Nuqta turi")
+
+    class Meta:
+        verbose_name = "Marshrut oraliq nuqtasi"
+        verbose_name_plural = "Marshrut oraliq nuqtalari"
+        ordering = ['order']
 
 
 class CalculationResult(models.Model):
