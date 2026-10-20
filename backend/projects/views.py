@@ -297,6 +297,77 @@ class ProjectViewSet(viewsets.ModelViewSet):
             'data': res
         })
 
+    @action(detail=True, methods=['get'], url_path='hydraulics-report')
+    def hydraulics_report(self, request, pk=None):
+        """
+        Loyihadagi har bir issiq pol konturi uchun batafsil gidravlik hisob,
+        suv sarfi, oqim tezligi, bosim yo'qotilishi va 2 ta kollektor zaruriyati tahlilini qaytaradi.
+        """
+        project = self.get_object()
+        from engineering.hydraulics import (
+            calculate_underfloor_circuit_hydraulics,
+            evaluate_two_manifold_architecture_necessity
+        )
+        circuits_report = []
+        all_circuits = UnderfloorHeatingCircuit.objects.filter(room__project=project).select_related('room', 'manifold')
+
+        tot_flow_l_h = 0.0
+        max_pressure_drop_kpa = 0.0
+
+        for circ in all_circuits:
+            rep = calculate_underfloor_circuit_hydraulics(
+                circuit_number=circ.circuit_number,
+                name=circ.name,
+                heated_area_m2=float(circ.heated_area or circ.room.area or 15.0),
+                floor_length_m=float(circ.floor_length_m or 50.0),
+                feeder_length_m=float(circ.manifold_lead_in_m or 5.0),
+                pipe_diameter_mm=float(circ.pipe_diameter_mm or 16.0),
+                spacing_mm=float(circ.spacing_mm or 150.0),
+                t_supply=40.0,
+                t_return=35.0
+            )
+            circuits_report.append({
+                "circuit_id": circ.id,
+                "circuit_number": circ.circuit_number,
+                "name": circ.name,
+                "room_name": circ.room.name,
+                "manifold_name": circ.manifold.name if circ.manifold else "Дв-2",
+                "manifold_port": circ.manifold_port_index,
+                "floor_length_m": rep.floor_length_m,
+                "feeder_length_m": rep.feeder_length_m,
+                "total_length_m": rep.total_length_m,
+                "heat_power_w": rep.heat_power_w,
+                "flow_l_h": rep.flow_l_h,
+                "flow_l_min": rep.flow_l_min,
+                "velocity_m_s": rep.velocity_m_s,
+                "pressure_drop_kpa": rep.pressure_drop_kpa,
+                "transit_temp_drop_c": rep.transit_temp_drop_c,
+                "is_length_compliant": rep.is_length_compliant,
+                "is_velocity_compliant": rep.is_velocity_compliant,
+                "is_pressure_compliant": rep.is_pressure_compliant,
+                "balancing_setting_l_min": rep.balancing_rotameter_setting_l_min,
+                "cooling_risk_warning": rep.cooling_risk_warning,
+                "notes": rep.notes
+            })
+            tot_flow_l_h += rep.flow_l_h
+            if rep.pressure_drop_kpa > max_pressure_drop_kpa:
+                max_pressure_drop_kpa = rep.pressure_drop_kpa
+
+        two_manifold_analysis = evaluate_two_manifold_architecture_necessity()
+
+        return Response({
+            "status": "success",
+            "project_id": project.id,
+            "project_name": project.name,
+            "circuits_count": len(circuits_report),
+            "total_flow_l_h": round(tot_flow_l_h, 1),
+            "total_flow_m3_h": round(tot_flow_l_h / 1000.0, 3),
+            "max_circuit_pressure_drop_kpa": max_pressure_drop_kpa,
+            "recommended_circulation_pump": "Grundfos UPM3 AUTO 25-70 130 yoki Wilo Para 25/6 SC (25 W)",
+            "circuits": circuits_report,
+            "manifold_architecture_analysis": two_manifold_analysis
+        })
+
     @action(detail=False, methods=['get'])
     def dashboard_stats(self, request):
         user = self.request.user

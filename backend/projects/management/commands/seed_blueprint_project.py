@@ -245,17 +245,17 @@ def seed_project_with_blueprint(project: Project) -> dict:
         # Barchasi o'ng devor (x_max=5.85) tomondan ulanadi. Feeder Дв-2 eshigi orqali o'ng devor bo'ylab keladi.
         {
             "room": r17, "manifold": m1, "port": 1, "num": 41, "name": "Uponor 41 / 85m",
-            "x_range": (0.3, 5.85), "y_range": (0.3, 3.8), "spacing": 150, "target_len": 85.0, "heated_area": 22.0,
+            "x_range": (0.3, 5.85), "y_range": (0.3, 3.8), "spacing": 150, "target_len": 85.0, "heated_area": 18.5,
             "side": 'right', "doorway_pos": (8.0, 11.2), "corridor_x": 8.35, "inner_wall_x": 7.85
         },
         {
             "room": r17, "manifold": m1, "port": 2, "num": 42, "name": "Uponor 42 / 81m",
-            "x_range": (0.3, 5.85), "y_range": (3.9, 7.5), "spacing": 150, "target_len": 81.0, "heated_area": 22.0,
+            "x_range": (0.3, 5.85), "y_range": (3.9, 7.5), "spacing": 150, "target_len": 81.0, "heated_area": 18.0,
             "side": 'right', "doorway_pos": (8.0, 11.2), "corridor_x": 8.35, "inner_wall_x": 7.85
         },
         {
             "room": r17, "manifold": m1, "port": 3, "num": 43, "name": "Uponor 43 / 75m",
-            "x_range": (0.3, 5.85), "y_range": (7.6, 11.1), "spacing": 150, "target_len": 75.0, "heated_area": 22.0,
+            "x_range": (0.3, 5.85), "y_range": (7.6, 11.1), "spacing": 150, "target_len": 75.0, "heated_area": 17.5,
             "side": 'right', "doorway_pos": (8.0, 11.2), "corridor_x": 8.35, "inner_wall_x": 7.85
         },
 
@@ -263,7 +263,7 @@ def seed_project_with_blueprint(project: Project) -> dict:
         # Ichki eshik (x=8.0, y=13.5) orqali ulanadi; bosh kirish eshigiga mutlaqo bormaydi.
         {
             "room": r16, "manifold": m1, "port": 4, "num": 45, "name": "Uponor 45 / 74m",
-            "x_range": (0.3, 5.85), "y_range": (0.3, 2.1), "spacing": 150, "target_len": 74.0, "heated_area": 14.0,
+            "x_range": (0.3, 5.85), "y_range": (0.3, 2.1), "spacing": 150, "target_len": 74.0, "heated_area": 12.0,
             "side": 'right', "doorway_pos": (8.0, 13.5), "corridor_x": 8.35, "inner_wall_x": 7.85
         },
 
@@ -271,12 +271,12 @@ def seed_project_with_blueprint(project: Project) -> dict:
         # To'g'ridan-to'g'ri koridor ichida, devor bo'ylab Дв-2 kollektoriga ulanadi.
         {
             "room": r18, "manifold": m1, "port": 5, "num": 44, "name": "Uponor 44 / 60m",
-            "x_range": (0.3, 2.1), "y_range": (0.3, 4.8), "spacing": 150, "target_len": 60.0, "heated_area": 11.0,
+            "x_range": (0.3, 2.1), "y_range": (0.3, 4.8), "spacing": 150, "target_len": 60.0, "heated_area": 9.5,
             "side": 'bottom', "doorway_pos": None, "corridor_x": 8.40, "inner_wall_x": None
         },
         {
             "room": r18, "manifold": m1, "port": 6, "num": 40, "name": "Uponor 40 / 57m",
-            "x_range": (0.3, 2.1), "y_range": (5.0, 8.2), "spacing": 150, "target_len": 57.0, "heated_area": 11.0,
+            "x_range": (0.3, 2.1), "y_range": (5.0, 8.2), "spacing": 150, "target_len": 57.0, "heated_area": 9.5,
             "side": 'bottom', "doorway_pos": None, "corridor_x": 8.40, "inner_wall_x": None
         },
 
@@ -284,12 +284,12 @@ def seed_project_with_blueprint(project: Project) -> dict:
         # O'ng tomon devorida joylashgan T1-32 kollektoriga (x=18.0, y=12.0) to'g'ri ulanadi.
         {
             "room": r19, "manifold": m2, "port": 1, "num": 30, "name": "Uponor 30 / 52m",
-            "x_range": (0.3, 3.4), "y_range": (0.3, 10.1), "spacing": 200, "target_len": 52.0, "heated_area": 32.0,
+            "x_range": (0.3, 3.4), "y_range": (0.3, 10.1), "spacing": 200, "target_len": 52.0, "heated_area": 14.0,
             "side": 'right', "doorway_pos": None, "corridor_x": 17.85, "inner_wall_x": None
         },
         {
             "room": r19, "manifold": m2, "port": 2, "num": 32, "name": "Uponor 32 / 76m",
-            "x_range": (3.6, 6.7), "y_range": (0.3, 10.1), "spacing": 150, "target_len": 76.0, "heated_area": 32.0,
+            "x_range": (3.6, 6.7), "y_range": (0.3, 10.1), "spacing": 150, "target_len": 76.0, "heated_area": 16.0,
             "side": 'right', "doorway_pos": None, "corridor_x": 17.85, "inner_wall_x": None
         },
 
@@ -297,7 +297,7 @@ def seed_project_with_blueprint(project: Project) -> dict:
         # T1-32 kollektoridan devor bo'ylab to'g'ri o'tadi
         {
             "room": r21, "manifold": m2, "port": 3, "num": 33, "name": "Uponor 33 / 37m",
-            "x_range": (0.3, 7.0), "y_range": (0.3, 3.3), "spacing": 200, "target_len": 37.0, "heated_area": 24.0,
+            "x_range": (0.3, 7.0), "y_range": (0.3, 3.3), "spacing": 200, "target_len": 37.0, "heated_area": 15.0,
             "side": 'right', "doorway_pos": None, "corridor_x": 18.0, "inner_wall_x": None
         },
 
@@ -305,7 +305,7 @@ def seed_project_with_blueprint(project: Project) -> dict:
         # T1-32 kollektoriga bevosita devordan ulanadi
         {
             "room": r23, "manifold": m2, "port": 4, "num": 34, "name": "Uponor 34 / 41m",
-            "x_range": (0.3, 3.7), "y_range": (0.3, 10.1), "spacing": 200, "target_len": 41.0, "heated_area": 35.0,
+            "x_range": (0.3, 3.7), "y_range": (0.3, 10.1), "spacing": 200, "target_len": 41.0, "heated_area": 16.0,
             "side": 'left', "doorway_pos": None, "corridor_x": 18.25, "inner_wall_x": None
         },
     ]
@@ -348,6 +348,9 @@ def seed_project_with_blueprint(project: Project) -> dict:
             inner_wall_x=cdef.get("inner_wall_x")
         )
 
+        # Pol ichidagi uzunlik va magistral uzunligi (Uponor normativ uzunligiga aniq moslashtirilgan)
+        fl_len = max(20.0, round(cdef["target_len"] - feeder_info["feeder_total_m"], 1))
+
         circuit = UnderfloorHeatingCircuit.objects.create(
             room=rm,
             manifold=man,
@@ -360,7 +363,7 @@ def seed_project_with_blueprint(project: Project) -> dict:
             pipe_wall_mm=2.0,
             pipe_material="Uponor PEX-a",
             pattern="spiral",
-            floor_length_m=round(coil_len, 1),
+            floor_length_m=fl_len,
             manifold_lead_in_m=feeder_info["feeder_total_m"],
             total_length_m=cdef["target_len"],  # Uponor normativ uzunligi
             color_hex="#2563EB",

@@ -171,6 +171,10 @@ class ApiClient {
     });
   }
 
+  async getHydraulicsReport(projectId: number): Promise<any> {
+    return this.request<any>(`/projects/projects/${projectId}/hydraulics-report/`);
+  }
+
   async updateUnderfloorCircuit(circuitId: number, data: Partial<any>): Promise<any> {
     return this.request<any>(`/projects/underfloor-circuits/${circuitId}/`, {
       method: 'PATCH',

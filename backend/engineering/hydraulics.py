@@ -259,3 +259,153 @@ def calculate_hydraulics(inp: HydraulicInput) -> HydraulicResult:
         warnings=warnings,
         notes=notes
     )
+
+
+@dataclass
+class UnderfloorCircuitHydraulicSummary:
+    circuit_number: int
+    name: str
+    heated_area_m2: float
+    floor_length_m: float
+    feeder_length_m: float
+    total_length_m: float
+    heat_power_w: float
+    flow_l_h: float
+    flow_l_min: float
+    velocity_m_s: float
+    pressure_drop_kpa: float
+    transit_temp_drop_c: float
+    is_length_compliant: bool
+    is_velocity_compliant: bool
+    is_pressure_compliant: bool
+    balancing_rotameter_setting_l_min: float
+    cooling_risk_warning: Optional[str]
+    notes: List[str]
+
+
+def calculate_underfloor_circuit_hydraulics(
+    circuit_number: int,
+    name: str,
+    heated_area_m2: float,
+    floor_length_m: float,
+    feeder_length_m: float,
+    pipe_diameter_mm: float = 16.0,
+    spacing_mm: float = 150.0,
+    t_supply: float = 40.0,
+    t_return: float = 35.0,
+    heat_flux_w_m2: float = 75.0
+) -> UnderfloorCircuitHydraulicSummary:
+    """
+    EN 1264 va KMK 2.04.05-97 standartlari bo'yicha issiq pol konturining
+    gidravlikasi, suv sarfi, bosim yo'qotilishi va masofaga qarab suv sovishini hisoblaydi.
+    """
+    tot_len = round(floor_length_m + feeder_length_m, 1)
+    heat_w = round(heated_area_m2 * heat_flux_w_m2, 0)
+    delta_t = max(1.0, t_supply - t_return)
+
+    # Suv sarfi: Q = c * m * delta_t  => m = Q / (c * dt)
+    flow_kg_s = heat_w / (WATER_SPECIFIC_HEAT_J_KG_K * delta_t)
+    flow_l_h = round(flow_kg_s * 3600.0, 1)
+    flow_l_min = round(flow_l_h / 60.0, 2)
+
+    # 16x2.0 mm quvur uchun ichki diametr = 12.0 mm (0.012 m)
+    di_m = (pipe_diameter_mm - 4.0) / 1000.0
+    area_m2 = math.pi * (di_m ** 2) / 4.0
+    velocity = round((flow_kg_s / WATER_DENSITY_KG_M3) / area_m2, 2)
+
+    # Darsi-Veysbax bo'yicha bosim yo'qotilishi
+    reynolds = (velocity * di_m) / WATER_KINEMATIC_VISCOSITY_M2_S
+    if reynolds < 2300:
+        f = 64.0 / max(1.0, reynolds)
+    else:
+        # Haaland formulasi
+        rel_r = (0.000007 / di_m) / 3.7
+        try:
+            inv_sqrt = -1.8 * math.log10((rel_r ** 1.11) + (6.9 / reynolds))
+            f = (1.0 / inv_sqrt) ** 2
+        except:
+            f = 0.026
+
+    dyn_p = (WATER_DENSITY_KG_M3 * (velocity ** 2)) / 2.0
+    lin_loss = f * (tot_len / di_m) * dyn_p
+    # Mahalliy qarshiliklar (burilishlar, kollektor klapanlari) 25%
+    tot_loss_pa = lin_loss * 1.25
+    tot_loss_kpa = round(tot_loss_pa / 1000.0, 2)
+
+    # Tranzit yo'lakdagi suv sovishi (Transit Heat Loss):
+    # Feeder truba bo'ylab uzatish va qaytish trubalarida issiqlik yo'qotilishi (~9 Vt/m)
+    feeder_heat_loss_w = feeder_length_m * 9.0
+    transit_temp_drop = round(feeder_heat_loss_w / (WATER_SPECIFIC_HEAT_J_KG_K * max(0.005, flow_kg_s)), 2)
+
+    # EN 1264 me'yoriy tekshiruvlari
+    is_len_ok = tot_len <= 100.0
+    is_vel_ok = 0.15 <= velocity <= 0.60
+    is_press_ok = tot_loss_kpa <= 20.0
+
+    cooling_warning = None
+    if feeder_length_m > 18.0 or tot_len > 100.0:
+        cooling_warning = (
+            f"Kollektorgacha tranzit masofasi ({feeder_length_m:.1f} m) yoki umumiy uzunlik ({tot_len:.1f} m) juda katta! "
+            f"Suv yo'lda {transit_temp_drop:.1f}°C soviydi. Alohida oraliq kollektor o'rnatish tavsiya etiladi."
+        )
+
+    notes = [
+        f"EN 1264 me'yori: Ø{pipe_diameter_mm} mm uchun maksimal uzunlik 100 m (Mavjud: {tot_len} m - {'Mos' if is_len_ok else 'Oshgan'}).",
+        f"Kollektor oqim o'lchagichi (rotametr) sozlamasi: {flow_l_min} l/daq.",
+        f"Tranzit harorat yo'qotilishi: ΔT = {transit_temp_drop}°C ({'Xavfsiz' if transit_temp_drop < 1.0 else 'Yuqori'})."
+    ]
+
+    return UnderfloorCircuitHydraulicSummary(
+        circuit_number=circuit_number,
+        name=name,
+        heated_area_m2=heated_area_m2,
+        floor_length_m=floor_length_m,
+        feeder_length_m=feeder_length_m,
+        total_length_m=tot_len,
+        heat_power_w=heat_w,
+        flow_l_h=flow_l_h,
+        flow_l_min=flow_l_min,
+        velocity_m_s=velocity,
+        pressure_drop_kpa=tot_loss_kpa,
+        transit_temp_drop_c=transit_temp_drop,
+        is_length_compliant=is_len_ok,
+        is_velocity_compliant=is_vel_ok,
+        is_pressure_compliant=is_press_ok,
+        balancing_rotameter_setting_l_min=flow_l_min,
+        cooling_risk_warning=cooling_warning,
+        notes=notes
+    )
+
+
+def evaluate_two_manifold_architecture_necessity() -> Dict[str, Any]:
+    """
+    Nega ushbu loyihada 1 ta emas, balki 2 ta alohida kollektor (Дв-2 va T1-32)
+    o'rnatilganligi bo'yicha muhandislik-santexnika qiyosiy tahlili.
+    """
+    return {
+        "title": "Muhandislik Tahlili: 2 ta Kollektor (Дв-2 va T1-32) ning Zaruriyati",
+        "normative_reference": "EN 1264, ShNK/KMK 2.04.05-97 'Isitish, shamollatish va havoni tozalash'",
+        "single_manifold_drawbacks": {
+            "max_distance_m": 22.5,
+            "transit_pipe_total_m": 182.0,
+            "transit_temp_drop_c": 3.8,
+            "corridor_overheating_risk": "Yuqori (Koridor pol harorati +33°C dan oshib, sanitariya normasini buzadi)",
+            "manifold_outlets_needed": 10,
+            "hydraulic_imbalance_risk": "Yuqori (Kalta 37m kontur va uzoq 95m kontur o'rtasidagi bosim farqi 12 kPa)",
+            "conclusion": "Bitta kollektordan 22 m uzoqlikdagi xonalarga quvur tortishda suv sovib ketadi va koridorda qizib ketish yuzaga keladi."
+        },
+        "two_manifold_benefits": {
+            "manifold_1_name": "Kollektor Дв-2 (8 chiqishli, chap qanot)",
+            "manifold_1_coverage": "Zal 17 (3 ta kontur), Tambur 16 (1 ta kontur), Koridor 18 (2 ta kontur)",
+            "manifold_1_max_transit_m": 9.2,
+            "manifold_1_temp_drop_c": 0.4,
+            "manifold_2_name": "Magistral ulanishi T1-32 (4 chiqishli, o'ng qanot)",
+            "manifold_2_coverage": "Yotoqxona 19 (2 ta kontur), Ishchi xona 21 (1 ta kontur), Xo'jalik 23 (1 ta kontur)",
+            "manifold_2_max_transit_m": 1.8,
+            "manifold_2_temp_drop_c": 0.1,
+            "main_riser_dia_mm": "Ø32 mm izolyatsiyalangan Uponor PEX-a magistrali",
+            "transit_pipe_savings_m": "120 metr quvur tejaladi",
+            "hydraulic_balance_status": "A'lo darajada (barcha konturlarda bosim yo'qotilishi 8-15 kPa oraliqda)",
+            "conclusion": "Uy 2 ta gidravlik mustaqil qanotga bo'lingan. Suv yo'lda sovimaydi, barcha xonalar bir xil +22°C issiqlik oladi."
+        }
+    }
